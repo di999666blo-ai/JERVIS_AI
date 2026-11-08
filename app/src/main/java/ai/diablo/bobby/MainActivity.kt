@@ -413,7 +413,20 @@ private fun BobbyHome(
                                 runCatching { derivConnector.saveCredentials(derivAppId, derivToken) }
                                     .onSuccess {
                                         derivToken = ""
-                                        derivStatus = "Saved securely. Connection verification is available in the next integration step."
+                                        derivBusy = true
+                                        derivStatus = "Connecting to Deriv and verifying account..."
+                                        derivConnector.connectAndVerify { result ->
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                derivBusy = false
+                                                result.onSuccess { account ->
+                                                    derivAccount = account
+                                                    derivStatus = "VERIFIED: " + account.loginId + " | " + account.balance + " " + account.currency + " | " + if (account.isVirtual) "DEMO" else "REAL"
+                                                    chat.add(ChatLine(true, "Deriv account verified. No trade was placed."))
+                                                }.onFailure { error ->
+                                                    derivStatus = "Connection failed: " + (error.message ?: "Unknown error")
+                                                }
+                                            }
+                                        }
                                     }
                                     .onFailure { derivStatus = it.message ?: "Could not save." }
                             }) { Text("SAVE SECURELY") }
