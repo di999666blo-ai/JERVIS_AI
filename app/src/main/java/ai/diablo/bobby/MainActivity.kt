@@ -62,7 +62,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             BobbyHome(
                 onSpeak = { text ->
                     neuralVoice.speak(text, configStore.apiKey()) {
-                        if (ttsReady) tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply")
+                        if (ttsReady) {
+                            val engine = tts
+                            if (engine != null) {
+                                BobbySpeechLanguage.configureLocalTts(engine, text)
+                                engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply")
+                            }
+                        }
                     }
                 },
                 onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } },
