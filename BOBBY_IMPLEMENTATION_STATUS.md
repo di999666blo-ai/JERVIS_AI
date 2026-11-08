@@ -37,3 +37,9 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 3. Integrate a compatible LiteRT-LM runtime/model and test on the target Android device.
 4. Add approved wake-word/background voice and platform-supported phone automation.
 5. Add document parsers and multimodal AI, web research, communication integrations and complete QA.
+
+
+## Plugin hub milestone (in development)
+- Added an in-app plugin hub/catalogue entry point and local registry for GitHub, Deriv, Web Research and Google Drive, plus custom HTTPS connector registration.
+- GitHub fine-grained token can be stored using the Android Keystore encrypted vault. Use minimum read-only repository permissions.
+- Important: registry/configuration is not the same as an active connector. GitHub API operations, OAuth-based Drive access, web research, and custom connector execution still require their dedicated adapters and permission flows. The UI labels these limitations instead of pretending they work.

@@ -18,6 +18,8 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -160,6 +162,11 @@ private fun BobbyHome(
     var settingsOpen by remember { mutableStateOf(false) }
     var permissionsOpen by remember { mutableStateOf(false) }
     var derivOpen by remember { mutableStateOf(false) }
+    var pluginsOpen by remember { mutableStateOf(false) }
+    var githubTokenDraft by remember { mutableStateOf("") }
+    var customPluginName by remember { mutableStateOf("") }
+    var customPluginUrl by remember { mutableStateOf("") }
+    val pluginStore = remember { BobbyPluginStore(appContext) }
     var derivAppId by remember { mutableStateOf("") }
     var derivToken by remember { mutableStateOf("") }
     var derivStatus by remember { mutableStateOf("Not connected") }
@@ -270,6 +277,7 @@ private fun BobbyHome(
                         TextButton(onClick = { memoryItems = memoryStore.list(); memoryOpen = true }) { Text("MEMORY", color = Neon) }
                         TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Text("ADD FILE", color = Neon) }
                         TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
+                        TextButton(onClick = { pluginsOpen = true }) { Text("ADD PLUGINS", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
                         TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
@@ -412,6 +420,74 @@ private fun BobbyHome(
                             }) { Text("SAVE MEMORY", color = Neon) }
                         },
                         dismissButton = { TextButton(onClick = { memoryOpen = false }) { Text("CLOSE") } }
+                    )
+                }
+                if (pluginsOpen) {
+                    AlertDialog(
+                        onDismissRequest = { pluginsOpen = false },
+                        title = { Text("BOBBY PLUGIN HUB") },
+                        text = {
+                            Column(
+                                Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text("Add integrations to Bobby. Each connector needs its own authorization; installing a connector does not grant it phone or account access.")
+                                Text("AVAILABLE CONNECTORS", color = Neon)
+                                pluginStore.catalog.forEach { plugin ->
+                                    Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(12.dp)).padding(10.dp)) {
+                                        Text(plugin.name, color = Color.White, style = MaterialTheme.typography.titleMedium)
+                                        Text(plugin.description, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                        Text(
+                                            when {
+                                                plugin.id == "github" && pluginStore.hasGitHubToken() -> "CREDENTIAL SAVED SECURELY • API ACTIONS NOT YET WIRED"
+                                                plugin.id == "deriv" -> "AVAILABLE • ACCOUNT VERIFICATION ONLY"
+                                                pluginStore.isEnabled(plugin.id) -> "ADDED • CONNECTOR RUNTIME NOT YET WIRED"
+                                                else -> "NOT ADDED"
+                                            },
+                                            color = Neon,
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            OutlinedButton(onClick = {
+                                                pluginStore.setEnabled(plugin.id, !pluginStore.isEnabled(plugin.id))
+                                                if (plugin.id == "github" && !pluginStore.isEnabled(plugin.id)) githubTokenDraft = ""
+                                            }) { Text(if (pluginStore.isEnabled(plugin.id)) "REMOVE" else "ADD") }
+                                            if (plugin.id == "github") {
+                                                OutlinedButton(onClick = {
+                                                    runCatching {
+                                                        appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/settings/personal-access-tokens")))
+                                                    }
+                                                }) { Text("GITHUB SETUP") }
+                                            }
+                                        }
+                                        if (plugin.id == "github" && pluginStore.isEnabled("github")) {
+                                            OutlinedTextField(
+                                                value = githubTokenDraft,
+                                                onValueChange = { githubTokenDraft = it },
+                                                label = { Text("GitHub fine-grained token (read-only)") },
+                                                visualTransformation = PasswordVisualTransformation(),
+                                                singleLine = true
+                                            )
+                                            TextButton(onClick = {
+                                                runCatching { pluginStore.saveGitHubToken(githubTokenDraft) }
+                                                    .onSuccess { githubTokenDraft = ""; chat.add(ChatLine(true, "GitHub credential encrypted on this phone. GitHub repository actions still need their connector implementation.")) }
+                                                    .onFailure { chat.add(ChatLine(true, "GitHub credential was not saved: ${it.message}")) }
+                                            }) { Text("SAVE TOKEN SECURELY", color = Neon) }
+                                        }
+                                    }
+                                }
+                                Text("CUSTOM HTTPS CONNECTOR", color = Neon)
+                                OutlinedTextField(value = customPluginName, onValueChange = { customPluginName = it.take(40) }, label = { Text("Connector name") }, singleLine = true)
+                                OutlinedTextField(value = customPluginUrl, onValueChange = { customPluginUrl = it.take(240) }, label = { Text("HTTPS API base URL") }, singleLine = true)
+                                Text("Custom connectors are registered locally only. Bobby will not send requests until a compatible connector adapter is implemented and authorized.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                TextButton(onClick = {
+                                    runCatching { pluginStore.addCustom(customPluginName, customPluginUrl) }
+                                        .onSuccess { customPluginName = ""; customPluginUrl = ""; chat.add(ChatLine(true, "Custom connector added to your local plugin list. Its API actions are not active yet.")) }
+                                        .onFailure { chat.add(ChatLine(true, "Connector not added: ${it.message}")) }
+                                }) { Text("ADD CUSTOM CONNECTOR", color = Neon) }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { pluginsOpen = false }) { Text("DONE", color = Neon) } }
                     )
                 }
                 if (permissionsOpen) {
