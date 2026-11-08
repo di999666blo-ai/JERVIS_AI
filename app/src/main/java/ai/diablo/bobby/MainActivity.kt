@@ -249,7 +249,6 @@ private fun BobbyHome(
     var apiKey by remember { mutableStateOf("") }
     var aiEnabled by remember { mutableStateOf(hasSavedKey) }
     var bubbleOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-    val chat = remember { mutableStateListOf(ChatLine(true, profile?.let { "Hey " + it.name + "! 😊 I’m Bobby, your buddy. I’ve got your back. What’s the plan today?" } ?: "Hey, I’m Bobby. Let’s get acquainted! 😊")) }
     LaunchedEffect(profile) { profile?.reminders()?.forEach { reminder -> if (chat.none { it.text == reminder }) chat.add(0, ChatLine(true, reminder)) } }
     val pulse = rememberInfiniteTransition(label = "bobby-avatar")
     val breathing by pulse.animateFloat(0.96f, 1.045f, infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breathing")
