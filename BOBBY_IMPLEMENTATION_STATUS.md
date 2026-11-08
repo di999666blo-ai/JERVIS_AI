@@ -67,3 +67,10 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - APK artifact `bobby-debug-apk` was uploaded successfully (debug APK, approximately 60.3 MB).
 - The build includes: searchable 100+ provider directory, encrypted GitHub token and read-only GitHub identity verification, Brave Search API adapter and research UI, LiteRT-LM 0.18.0 runtime integration, Qwen3-0.6B in-app model download, offline inference/fallback wiring, and Android alarm/app-launch intents.
 - Not yet verified: runtime inference on a real phone, Hugging Face download completion, Brave API connection with a user key, GitHub connection with a user's token, and actual alarm/app-launch behaviour on device.
+
+
+## 2026-11-08 — Scheduled reminder foundation
+- Added local reminder scheduling using Android AlarmManager, persisted reminder metadata, notification channel/receiver and boot-time restoration.
+- Added natural command parsing for reminders such as `remind me in 15 minutes to check the oven`.
+- Exact alarms are used only when Android grants exact-alarm access; otherwise BOBBY falls back to an inexact idle-aware alarm. Notifications require Android notification permission.
+- Build and device behaviour pending verification.

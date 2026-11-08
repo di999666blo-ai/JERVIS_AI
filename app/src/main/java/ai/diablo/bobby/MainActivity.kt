@@ -237,6 +237,28 @@ private fun BobbyHome(
         val clean = text.trim()
         if (clean.isEmpty()) return
         val lower = clean.lowercase(Locale.ROOT)
+        val reminder = Regex("""(?i)\bremind me in\s+(\d+)\s*(minutes?|mins?|hours?|hrs?|days?)\s*(?:to|about)?\s+(.+)$""").find(clean)
+        if (reminder != null) {
+            runCatching {
+                val amount = reminder.groupValues[1].toLong()
+                val unit = reminder.groupValues[2].lowercase(Locale.ROOT)
+                val task = reminder.groupValues[3].trim()
+                val multiplier = when {
+                    unit.startsWith("min") -> 60_000L
+                    unit.startsWith("hour") || unit.startsWith("hr") -> 3_600_000L
+                    else -> 86_400_000L
+                }
+                BobbyReminderScheduler.schedule(appContext, Math.multiplyExact(amount, multiplier), task)
+                val permissionMissing = android.os.Build.VERSION.SDK_INT >= 33 &&
+                    appContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                if (permissionMissing) "Reminder saved, but allow BOBBY notifications in Android Settings so the alert can appear."
+                else "Reminder scheduled. I'll notify you in $amount $unit: $task"
+            }.onSuccess { reply ->
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            }.onFailure { error ->
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't schedule that reminder: " + (error.message ?: "unknown error"))); onSpeak("I couldn't schedule that reminder."); return
+            }
+        }
         val alarm = Regex("""(?i)\b(?:set|create|make)\s+(?:(?:an?)\s+|my\s+)?alarm(?:\s+(?:for|to))?\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b""").find(clean)
         if (alarm != null) {
             runCatching {
