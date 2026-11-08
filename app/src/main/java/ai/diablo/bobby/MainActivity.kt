@@ -50,11 +50,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private var ttsReady = false
     private var selectedVoice: Voice? = null
     private lateinit var neuralVoice: BobbyNeuralVoice
+    private lateinit var offlineAi: BobbyOfflineAi
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         tts = TextToSpeech(this, this)
         neuralVoice = BobbyNeuralVoice(this)
+        offlineAi = BobbyOfflineAi(this)
         setContent {
             val configStore = BobbyConfigStore(this)
             BobbyHome(
@@ -69,6 +71,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 initialModel = configStore.model(),
                 hasSavedKey = configStore.apiKey().isNotBlank(),
                 onSaveConfig = { endpoint, model, key -> configStore.save(endpoint, model, key) },
+                onAskOffline = { prompt, done -> offlineAi.reply(prompt, done) },
                 onAskAi = { history, done ->
                     val p = BobbyProfileStore(this).load()
                     val profileContext = p?.let {
@@ -131,6 +134,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         tts?.stop()
         tts?.shutdown()
         if (::neuralVoice.isInitialized) neuralVoice.release()
+        if (::offlineAi.isInitialized) offlineAi.close()
         super.onDestroy()
     }
 }
@@ -144,6 +148,7 @@ private fun BobbyHome(
     initialModel: String,
     hasSavedKey: Boolean,
     onSaveConfig: (String, String, String) -> Unit,
+    onAskOffline: (String, (Result<String>) -> Unit) -> Unit,
     onAskAi: (List<ChatLine>, (Result<String>) -> Unit) -> Unit
 ) {
     val appContext = LocalContext.current
@@ -163,6 +168,11 @@ private fun BobbyHome(
     var permissionsOpen by remember { mutableStateOf(false) }
     var derivOpen by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
+    var offlineOpen by remember { mutableStateOf(false) }
+    var offlineStatus by remember { mutableStateOf(BobbyOfflineModelStore(appContext).status().note) }
+    var offlineBusy by remember { mutableStateOf(false) }
+    var offlineProgress by remember { mutableStateOf(0) }
+    val offlineStore = remember { BobbyOfflineModelStore(appContext) }
     var githubTokenDraft by remember { mutableStateOf("") }
     var githubStatus by remember { mutableStateOf("Not tested") }
     var githubBusy by remember { mutableStateOf(false) }
@@ -219,11 +229,22 @@ private fun BobbyHome(
         chat.add(ChatLine(false, clean))
         draft = ""
         if (!aiEnabled) {
-            val reply = answerFor(clean)
-            chat.add(ChatLine(true, reply))
-            state = "SPEAKING"
-            onSpeak(reply)
-            state = "IDLE"
+            if (offlineStore.status().installed) {
+                state = "THINKING"
+                onAskOffline(clean) { result ->
+                    val reply = result.getOrElse { "Offline AI could not start: ${it.message ?: "unknown error"}. You can still connect an online AI provider in AI SETTINGS." }
+                    chat.add(ChatLine(true, reply))
+                    state = if (result.isSuccess) "SPEAKING" else "ERROR"
+                    if (result.isSuccess) onSpeak(reply)
+                    state = if (result.isSuccess) "IDLE" else "ERROR"
+                }
+            } else {
+                val reply = answerFor(clean)
+                chat.add(ChatLine(true, reply))
+                state = "SPEAKING"
+                onSpeak(reply)
+                state = "IDLE"
+            }
         } else {
             state = "THINKING"
             onAskAi(chat.toList()) { result ->
@@ -282,6 +303,7 @@ private fun BobbyHome(
                         TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Text("ADD FILE", color = Neon) }
                         TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
                         TextButton(onClick = { pluginsOpen = true }) { Text("ADD PLUGINS", color = Neon) }
+                        TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
                         TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
@@ -424,6 +446,49 @@ private fun BobbyHome(
                             }) { Text("SAVE MEMORY", color = Neon) }
                         },
                         dismissButton = { TextButton(onClick = { memoryOpen = false }) { Text("CLOSE") } }
+                    )
+                }
+                if (offlineOpen) {
+                    AlertDialog(
+                        onDismissRequest = { if (!offlineBusy) offlineOpen = false },
+                        title = { Text("BOBBY OFFLINE AI") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Local model: Qwen3 0.6B • LiteRT-LM • CPU inference")
+                                Text(offlineStatus, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                if (offlineBusy) {
+                                    LinearProgressIndicator(progress = { offlineProgress / 100f }, modifier = Modifier.fillMaxWidth())
+                                    Text("Downloading model: $offlineProgress%")
+                                }
+                                Text("The model downloads directly into BOBBY's private app storage. It is not included in the APK. About 614 MB is required; first model load may take time and performance depends on phone RAM/CPU.", style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(enabled = !offlineBusy && !offlineStore.status().installed, onClick = {
+                                offlineBusy = true; offlineProgress = 0; offlineStatus = "Connecting to Hugging Face…"
+                                offlineStore.downloadRecommended(
+                                    onProgress = { received, total ->
+                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            offlineProgress = if (total > 0) ((received * 100) / total).toInt() else 0
+                                        }
+                                    },
+                                    callback = { result ->
+                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            offlineBusy = false
+                                            offlineStatus = result.fold({ "MODEL DOWNLOADED • " + (it.bytes / (1024 * 1024)) + " MB • ready for first local inference" }, { "Download failed: " + (it.message ?: "unknown error") })
+                                        }
+                                    }
+                                )
+                            }) { Text(if (offlineBusy) "DOWNLOADING…" else "DOWNLOAD MODEL", color = Neon) }
+                        },
+                        dismissButton = {
+                            Row {
+                                TextButton(enabled = !offlineBusy && offlineStore.status().installed, onClick = {
+                                    offlineAi.close(); offlineStore.removeModel(); offlineStatus = offlineStore.status().note
+                                }) { Text("REMOVE MODEL") }
+                                TextButton(onClick = { offlineOpen = false }) { Text("CLOSE") }
+                            }
+                        }
                     )
                 }
                 if (pluginsOpen) {
