@@ -396,6 +396,31 @@ private fun BobbyHome(
                 if (permissionsOpen) {
                     BobbyPermissionCenter(onDismiss = { permissionsOpen = false })
                 }
+                if (derivOpen) {
+                    AlertDialog(
+                        onDismissRequest = { derivOpen = false },
+                        title = { Text("CONNECT DERIV") },
+                        text = {
+                            Column {
+                                Text("Enter your numeric Deriv App ID and a Read-only API token. Never paste your password.")
+                                OutlinedTextField(value = derivAppId, onValueChange = { derivAppId = it.filter { ch -> ch.isDigit() }.take(12) }, label = { Text("App ID") })
+                                OutlinedTextField(value = derivToken, onValueChange = { derivToken = it }, label = { Text("API token") }, visualTransformation = PasswordVisualTransformation())
+                                Text(derivStatus)
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                runCatching { derivConnector.saveCredentials(derivAppId, derivToken) }
+                                    .onSuccess {
+                                        derivToken = ""
+                                        derivStatus = "Saved securely. Connection verification is available in the next integration step."
+                                    }
+                                    .onFailure { derivStatus = it.message ?: "Could not save." }
+                            }) { Text("SAVE SECURELY") }
+                        },
+                        dismissButton = { TextButton(onClick = { derivOpen = false }) { Text("CLOSE") } }
+                    )
+                }
                 if (settingsOpen) {
                     AlertDialog(
                         onDismissRequest = { settingsOpen = false },
