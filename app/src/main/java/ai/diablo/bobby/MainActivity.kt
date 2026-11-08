@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     val profileContext = p?.let {
                         "The user's preferred name is ${it.name}; age on profile: ${it.age}; birthday: ${it.birthday}; city: ${it.city}. " +
                         "Use their name naturally, remember their birthday and saved important dates, and use their city only when answering local weather questions. " +
-                        "Do not infer or announce the current time as a reminder unless asked or a reminder feature explicitly triggers."
+                        "The user likes a warm buddy with gentle humour and occasional emojis. You may use the current local date/time below for context; if it is very early or late, gently mention it without being bossy. Never claim to send a notification unless one was actually scheduled. Current local date/time: " + java.time.ZonedDateTime.now().toString() + ". Saved important dates: " + it.importantDays.joinToString { day -> day.title + " on " + day.date } + "."
                     }.orEmpty()
                     BobbyAiClient.reply(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, profileContext) { result ->
                         runOnUiThread { done(result) }
@@ -167,7 +167,7 @@ private fun BobbyHome(
             q.contains("sad") || q.contains("stressed") || q.contains("tired") ->
                 "I’m sorry it’s been heavy. Want to tell me what happened? I’ll listen without judging."
             q.contains("joke") -> "Why did the phone need glasses? It kept losing its contacts. I know, terrible one."
-            q.contains("time") -> "I can’t read your phone’s live clock in this first chat build yet. I don’t want to guess."
+            q.contains("time") -> "It’s " + java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())) + " on your phone right now. ⏰"
             else -> "I hear you. I can keep the conversation going, but my full online AI brain is not connected yet, so I can’t claim this is deep AI understanding. Tell me a little more and I’ll do my best with what’s available."
         }
     }
