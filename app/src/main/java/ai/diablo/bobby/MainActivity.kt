@@ -178,6 +178,13 @@ private fun BobbyHome(
     var derivOpen by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
     var offlineOpen by remember { mutableStateOf(false) }
+    var webResearchOpen by remember { mutableStateOf(false) }
+    var webQuery by remember { mutableStateOf("") }
+    var webKeyDraft by remember { mutableStateOf("") }
+    var webStatus by remember { mutableStateOf("Brave Search is not connected.") }
+    var webBusy by remember { mutableStateOf(false) }
+    var webResults by remember { mutableStateOf(emptyList<BobbyWebResult>()) }
+    val webConnector = remember { BobbyWebResearchConnector(appContext) }
     var offlineStatus by remember { mutableStateOf(BobbyOfflineModelStore(appContext).status().note) }
     var offlineBusy by remember { mutableStateOf(false) }
     var offlineProgress by remember { mutableStateOf(0) }
@@ -313,6 +320,7 @@ private fun BobbyHome(
                         TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
                         TextButton(onClick = { pluginsOpen = true }) { Text("ADD PLUGINS", color = Neon) }
                         TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
+                        TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
                         TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
@@ -455,6 +463,59 @@ private fun BobbyHome(
                             }) { Text("SAVE MEMORY", color = Neon) }
                         },
                         dismissButton = { TextButton(onClick = { memoryOpen = false }) { Text("CLOSE") } }
+                    )
+                }
+                if (webResearchOpen) {
+                    AlertDialog(
+                        onDismissRequest = { if (!webBusy) webResearchOpen = false },
+                        title = { Text("BOBBY WEB RESEARCH") },
+                        text = {
+                            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Connect Brave Search once. BOBBY stores the API key encrypted on this phone and uses it only for web searches.")
+                                OutlinedTextField(value = webKeyDraft, onValueChange = { webKeyDraft = it }, label = { Text("Brave Search API key") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    TextButton(onClick = {
+                                        runCatching { webConnector.saveKey(webKeyDraft) }
+                                            .onSuccess { webKeyDraft = ""; webStatus = "API key saved securely. Search is ready." }
+                                            .onFailure { webStatus = it.message ?: "Could not save key." }
+                                    }) { Text("SAVE KEY", color = Neon) }
+                                    TextButton(onClick = {
+                                        runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://brave.com/search/api/"))) }
+                                    }) { Text("GET API KEY") }
+                                    TextButton(onClick = { webConnector.removeKey(); webStatus = "Disconnected. API key removed." }) { Text("DISCONNECT") }
+                                }
+                                Text(webStatus, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                OutlinedTextField(value = webQuery, onValueChange = { webQuery = it.take(300) }, label = { Text("What should Bobby research?") }, modifier = Modifier.fillMaxWidth())
+                                Button(enabled = !webBusy && webConnector.hasKey() && webQuery.isNotBlank(), onClick = {
+                                    webBusy = true; webStatus = "Searching the web…"; webResults = emptyList()
+                                    webConnector.search(webQuery) { result ->
+                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            webBusy = false
+                                            result.onSuccess { rows -> webResults = rows; webStatus = "Found " + rows.size + " web results." }
+                                                .onFailure { webStatus = "Search failed: " + (it.message ?: "unknown error") }
+                                        }
+                                    }
+                                }) { Text(if (webBusy) "SEARCHING…" else "SEARCH WEB") }
+                                webResults.forEachIndexed { index, item ->
+                                    Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(10.dp)).padding(9.dp)) {
+                                        Text("${index + 1}. ${item.title}", color = Neon, style = MaterialTheme.typography.titleSmall)
+                                        Text(item.description, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                        Text(item.url, color = Color.Cyan, style = MaterialTheme.typography.labelSmall)
+                                        TextButton(onClick = {
+                                            runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.url))) }
+                                        }) { Text("OPEN SOURCE") }
+                                    }
+                                }
+                                if (webResults.isNotEmpty()) {
+                                    Button(onClick = {
+                                        val brief = webResults.joinToString("\n\n") { it.title + "\n" + it.description + "\n" + it.url }
+                                        webResearchOpen = false
+                                        send("Research question: $webQuery\n\nAnalyse these search results, compare the sources, and summarise what is supported.\n$brief")
+                                    }) { Text("ASK BOBBY TO ANALYSE RESULTS") }
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { webResearchOpen = false }) { Text("DONE", color = Neon) } }
                     )
                 }
                 if (offlineOpen) {
