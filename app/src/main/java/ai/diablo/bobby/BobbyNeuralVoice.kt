@@ -65,7 +65,7 @@ class BobbyNeuralVoice(private val context: Context) {
     }
 
     fun stop() {
-        main.post { player?.runCatching { stop() }; player?.release(); player = null }
+        main.post { player?.let { runCatching { it.stop() }; it.release() }; player = null }
     }
 
     fun release() {
