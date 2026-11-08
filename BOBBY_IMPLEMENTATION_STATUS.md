@@ -60,3 +60,10 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Added platform-mediated alarm and app-launch commands; Android Clock/target app still presents its own confirmation UI. No permission bypass.
 - Latest build attempt failed at Gradle configuration because Kotlin 2.3 rejects legacy `kotlinOptions.jvmTarget`; migrating to compilerOptions in this commit before rebuilding.
 - No successful build or on-device inference claim yet for these new milestones.
+
+
+## Verified build milestone — 2026-11-08
+- Commit `125f2d0ce9ba62017c9b8e3b54fea56c109311c3` built successfully with GitHub Actions run `42532783140`.
+- APK artifact `bobby-debug-apk` was uploaded successfully (debug APK, approximately 60.3 MB).
+- The build includes: searchable 100+ provider directory, encrypted GitHub token and read-only GitHub identity verification, Brave Search API adapter and research UI, LiteRT-LM 0.18.0 runtime integration, Qwen3-0.6B in-app model download, offline inference/fallback wiring, and Android alarm/app-launch intents.
+- Not yet verified: runtime inference on a real phone, Hugging Face download completion, Brave API connection with a user key, GitHub connection with a user's token, and actual alarm/app-launch behaviour on device.
