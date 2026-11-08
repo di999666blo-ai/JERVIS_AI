@@ -2,6 +2,8 @@ package ai.diablo.bobby
 
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
+import android.net.Uri
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
@@ -52,6 +54,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             BobbyHome(
                 onSpeak = { text -> if (ttsReady) tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply") },
                 onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } },
+                onToggleOverlay = { toggleFloatingRobot() },
                 initialEndpoint = configStore.endpoint(),
                 initialModel = configStore.model(),
                 hasSavedKey = configStore.apiKey().isNotBlank(),
@@ -91,6 +94,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 private fun BobbyHome(
     onSpeak: (String) -> Unit,
     onInstallVoice: () -> Unit,
+    onToggleOverlay: () -> Unit,
     initialEndpoint: String,
     initialModel: String,
     hasSavedKey: Boolean,
@@ -166,7 +170,10 @@ private fun BobbyHome(
                         Text("BOBBY", style = MaterialTheme.typography.headlineLarge, color = Neon)
                         Text("YOUR PERSONAL AI COMPANION", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
                     }
-                    TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
+                    Column(horizontalAlignment = Alignment.End) {
+                        TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
+                        TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 Box(
