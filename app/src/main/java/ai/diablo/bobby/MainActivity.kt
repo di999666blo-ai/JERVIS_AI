@@ -48,9 +48,19 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         super.onCreate(savedInstanceState)
         tts = TextToSpeech(this, this)
         setContent {
+            val configStore = BobbyConfigStore(this)
             BobbyHome(
                 onSpeak = { text -> if (ttsReady) tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply") },
-                onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } }
+                onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } },
+                initialEndpoint = configStore.endpoint(),
+                initialModel = configStore.model(),
+                hasSavedKey = configStore.apiKey().isNotBlank(),
+                onSaveConfig = { endpoint, model, key -> configStore.save(endpoint, model, key) },
+                onAskAi = { history, done ->
+                    BobbyAiClient.reply(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history) { result ->
+                        runOnUiThread { done(result) }
+                    }
+                }
             )
         }
     }
@@ -78,9 +88,22 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 }
 
 @Composable
-private fun BobbyHome(onSpeak: (String) -> Unit, onInstallVoice: () -> Unit) {
+private fun BobbyHome(
+    onSpeak: (String) -> Unit,
+    onInstallVoice: () -> Unit,
+    initialEndpoint: String,
+    initialModel: String,
+    hasSavedKey: Boolean,
+    onSaveConfig: (String, String, String) -> Unit,
+    onAskAi: (List<ChatLine>, (Result<String>) -> Unit) -> Unit
+) {
     var draft by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("IDLE") }
+    var settingsOpen by remember { mutableStateOf(false) }
+    var endpoint by remember { mutableStateOf(initialEndpoint) }
+    var model by remember { mutableStateOf(initialModel) }
+    var apiKey by remember { mutableStateOf("") }
+    var aiEnabled by remember { mutableStateOf(hasSavedKey) }
     var bubbleOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     val chat = remember { mutableStateListOf(ChatLine(true, "Hey, I’m Bobby. I’m here with you. Talk naturally, ask me something, or tell me what’s on your mind.")) }
     val pulse = rememberInfiniteTransition(label = "bobby-avatar")
@@ -109,12 +132,22 @@ private fun BobbyHome(onSpeak: (String) -> Unit, onInstallVoice: () -> Unit) {
         if (clean.isEmpty()) return
         chat.add(ChatLine(false, clean))
         draft = ""
-        state = "THINKING"
-        val reply = answerFor(clean)
-        chat.add(ChatLine(true, reply))
-        state = "SPEAKING"
-        onSpeak(reply)
-        state = "IDLE"
+        if (!aiEnabled) {
+            val reply = answerFor(clean)
+            chat.add(ChatLine(true, reply))
+            state = "SPEAKING"
+            onSpeak(reply)
+            state = "IDLE"
+        } else {
+            state = "THINKING"
+            onAskAi(chat.toList()) { result ->
+                val reply = result.getOrElse { "I couldn't reach the AI service: ${it.message ?: "unknown error"}. Check your connection and API settings." }
+                chat.add(ChatLine(true, reply))
+                state = if (result.isSuccess) "SPEAKING" else "ERROR"
+                if (result.isSuccess) onSpeak(reply)
+                state = if (result.isSuccess) "IDLE" else "ERROR"
+            }
+        }
     }
 
     val recognizer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -128,8 +161,13 @@ private fun BobbyHome(onSpeak: (String) -> Unit, onInstallVoice: () -> Unit) {
                 Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF280A16), Void, Void))).padding(horizontal = 18.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("BOBBY", style = MaterialTheme.typography.headlineLarge, color = Neon)
-                Text("YOUR PERSONAL AI COMPANION", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("BOBBY", style = MaterialTheme.typography.headlineLarge, color = Neon)
+                        Text("YOUR PERSONAL AI COMPANION", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                    }
+                    TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
+                }
                 Spacer(Modifier.height(12.dp))
                 Box(
                     Modifier.offset { IntOffset(bubbleOffset.x.roundToInt(), bubbleOffset.y.roundToInt()) }
@@ -178,9 +216,40 @@ private fun BobbyHome(onSpeak: (String) -> Unit, onInstallVoice: () -> Unit) {
                     OutlinedButton(modifier = Modifier.weight(1f), onClick = onInstallVoice) { Text("⬇ VOICE DATA") }
                 }
                 Text(
-                    "Voice data installs through your phone’s Text-to-Speech engine. Offline speech needs an installed offline voice. This build uses local starter replies until an AI provider is connected.",
+                    if (aiEnabled) "AI connected by your saved provider settings. Voice output uses your installed Android TTS voice."
+                    else "Offline starter chat is active. Add your AI provider key in AI SETTINGS for intelligent online conversation. Voice data installs through Android TTS.",
                     color = Color.Gray, style = MaterialTheme.typography.labelSmall
                 )
+                if (settingsOpen) {
+                    AlertDialog(
+                        onDismissRequest = { settingsOpen = false },
+                        title = { Text("Bobby AI connection") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("OpenAI-compatible API. Your key is encrypted on this device.")
+                                OutlinedTextField(value = endpoint, onValueChange = { endpoint = it }, label = { Text("HTTPS API base URL") }, singleLine = true)
+                                OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Model") }, singleLine = true)
+                                OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, label = { Text("API key (paste here)") }, singleLine = true)
+                                Text("Default: OpenAI API. Key is stored with Android Keystore encryption; it is never committed to GitHub.", style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                runCatching {
+                                    onSaveConfig(endpoint, model, apiKey)
+                                    aiEnabled = true
+                                    apiKey = ""
+                                    settingsOpen = false
+                                }.onFailure {
+                                    chat.add(ChatLine(true, "Could not save AI settings: ${it.message}"))
+                                }
+                            }) { Text("SAVE SECURELY") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { settingsOpen = false }) { Text("CANCEL") }
+                        }
+                    )
+                }
             }
         }
     }
