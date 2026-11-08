@@ -9,7 +9,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.TextView
+import android.widget.ImageView
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.animation.ObjectAnimator
@@ -18,17 +18,16 @@ import android.view.animation.AccelerateDecelerateInterpolator
 
 class FloatingRobotService : Service() {
     private lateinit var windowManager: WindowManager
-    private var bubble: TextView? = null
+    private var bubble: ImageView? = null
     private var params: WindowManager.LayoutParams? = null
 
     override fun onCreate() {
         super.onCreate()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val view = TextView(this).apply {
-            text = "☺"
-            textSize = 31f
-            gravity = Gravity.CENTER
-            setTextColor(Color.rgb(255, 23, 68))
+        val view = ImageView(this).apply {
+            setImageResource(R.drawable.bobby_robot_face)
+            scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+            setPadding(7, 7, 7, 7)
             background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(116, 10, 48), Color.rgb(15, 5, 10))).apply {
                 shape = GradientDrawable.OVAL
