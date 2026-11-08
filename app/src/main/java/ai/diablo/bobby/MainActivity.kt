@@ -249,6 +249,16 @@ private fun BobbyHome(
                     }
                 }
                 Text(weatherText, color = Color.LightGray, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                OutlinedButton(
+                    onClick = {
+                        val transcript = chat.takeLast(12).joinToString("\\n\\n") { line ->
+                            (if (line.fromBobby) "BOBBY: " else "YOU: ") + line.text
+                        }
+                        runCatching { BobbyCommunicationBridge.shareText(appContext, transcript, "Share BOBBY conversation") }
+                            .onFailure { chat.add(ChatLine(true, "Sharing could not be opened: " + (it.message ?: "unknown error"))) }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("SHARE CONVERSATION TO APPS") }
                 Spacer(Modifier.height(4.dp))
                 Box(
                     Modifier.offset { IntOffset(bubbleOffset.x.roundToInt(), bubbleOffset.y.roundToInt()) }
