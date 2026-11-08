@@ -30,7 +30,7 @@ class BobbyCallAnnouncerService : NotificationListenerService(), TextToSpeech.On
         ready = status == TextToSpeech.SUCCESS
         if (ready) {
             val locale = Locale.getDefault()
-            if (tts?.isLanguageAvailable(locale) ?: TextToSpeech.LANG_NOT_SUPPORTED >= TextToSpeech.LANG_AVAILABLE) {
+            if ((tts?.isLanguageAvailable(locale) ?: TextToSpeech.LANG_NOT_SUPPORTED) >= TextToSpeech.LANG_AVAILABLE) {
                 tts?.language = locale
             }
         }
