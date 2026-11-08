@@ -138,10 +138,14 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         ttsReady = status == TextToSpeech.SUCCESS
         if (ttsReady) {
             val engine = tts ?: return
-            engine.language = Locale.UK
-            selectedVoice = engine.voices?.filter { it.locale.language == "en" }?.sortedBy {
+            val preferredLocale = Locale.getDefault()
+            val preferredLanguage = preferredLocale.language
+            if (engine.isLanguageAvailable(preferredLocale) >= TextToSpeech.LANG_AVAILABLE) {
+                engine.language = preferredLocale
+            }
+            selectedVoice = engine.voices?.filter { it.locale.language == preferredLanguage }?.sortedBy {
                 val name = it.name.lowercase(Locale.ROOT)
-                when { "female" in name || "woman" in name -> 0; "en-gb" in name || "gb" in name -> 1; else -> 2 }
+                when { "female" in name || "woman" in name -> 0; it.locale.country == preferredLocale.country -> 1; else -> 2 }
             }?.firstOrNull()
             selectedVoice?.let { engine.voice = it }
             engine.setSpeechRate(0.94f)
@@ -531,7 +535,6 @@ private fun BobbyHome(
                         state = "LISTENING"
                         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-NG")
                             putExtra(RecognizerIntent.EXTRA_PROMPT, "Talk naturally to Bobby")
                         }
                         runCatching { recognizer.launch(intent) }.onFailure { state = "VOICE UNAVAILABLE" }
