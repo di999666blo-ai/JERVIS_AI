@@ -5,6 +5,10 @@ on:
     branches: [bobby-development]
   workflow_dispatch:
 
+concurrency:
+  group: bobby-android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   debug-apk:
     runs-on: ubuntu-latest
