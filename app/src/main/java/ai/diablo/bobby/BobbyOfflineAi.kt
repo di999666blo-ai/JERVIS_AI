@@ -1,6 +1,7 @@
 package ai.diablo.bobby
 
 import android.content.Context
+import android.app.ActivityManager
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
@@ -25,6 +26,12 @@ class BobbyOfflineAi(context: Context) {
         if (conversation != null) return
         synchronized(this) {
             if (conversation != null) return
+            val memoryManager = app.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memoryInfo = ActivityManager.MemoryInfo()
+            memoryManager.getMemoryInfo(memoryInfo)
+            require(!memoryInfo.lowMemory && memoryInfo.availMem >= 700L * 1024L * 1024L) {
+                "Android is low on free RAM. Close other apps and try again, or use online AI. BOBBY has paused offline loading to avoid a crash."
+            }
             val path = store.modelFile()
             require(path.isFile && path.length() in 500_000_000L..750_000_000L) {
                 "The offline model is missing or incomplete. Open OFFLINE AI and download it again."
@@ -47,8 +54,8 @@ class BobbyOfflineAi(context: Context) {
                         "If you do not know something, say so. You cannot browse or perform external actions while offline. " +
                         "Keep answers concise by default and explain limitations honestly."
                     ),
-                    samplerConfig = SamplerConfig(topK = 40, topP = 0.9, temperature = 0.7),
-                    maxOutputToken = 768
+                    samplerConfig = SamplerConfig(topK = 24, topP = 0.85, temperature = 0.7),
+                    maxOutputToken = 256
                 )
                 engine = newEngine
                 conversation = newEngine.createConversation(config)
