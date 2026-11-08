@@ -79,6 +79,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 onSaveConfig = { endpoint, model, key -> configStore.save(endpoint, model, key) },
                 onCloseOfflineModel = { offlineAi.close() },
                 onAskOffline = { prompt, done -> offlineAi.reply(prompt, done) },
+                onTestOffline = { done -> offlineAi.reply("Reply exactly: BOBBY OFFLINE MODEL TEST PASSED.", done) },
                 onAskAiWithImage = { history, path, done ->
                     BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> runOnUiThread { done(result) } }
                 },
@@ -173,6 +174,7 @@ private fun BobbyHome(
     onSaveConfig: (String, String, String) -> Unit,
     onCloseOfflineModel: () -> Unit,
     onAskOffline: (String, (Result<String>) -> Unit) -> Unit,
+    onTestOffline: ((Result<String>) -> Unit) -> Unit,
     onAskAi: (List<ChatLine>, (Result<String>) -> Unit) -> Unit,
     onAskAiWithImage: (List<ChatLine>, String, (Result<String>) -> Unit) -> Unit
 ) {
@@ -203,6 +205,7 @@ private fun BobbyHome(
     val webConnector = remember { BobbyWebResearchConnector(appContext) }
     var offlineStatus by remember { mutableStateOf(BobbyOfflineModelStore(appContext).status().note) }
     var offlineBusy by remember { mutableStateOf(false) }
+    var offlineTesting by remember { mutableStateOf(false) }
     var offlineProgress by remember { mutableStateOf(0) }
     val offlineStore = remember { BobbyOfflineModelStore(appContext) }
     var githubTokenDraft by remember { mutableStateOf("") }
@@ -672,22 +675,37 @@ private fun BobbyHome(
                             }
                         },
                         confirmButton = {
-                            TextButton(enabled = !offlineBusy && !offlineStore.status().installed, onClick = {
-                                offlineBusy = true; offlineProgress = 0; offlineStatus = "Connecting to Hugging Face…"
-                                offlineStore.downloadRecommended(
-                                    onProgress = { received, total ->
-                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                            offlineProgress = if (total > 0) ((received * 100) / total).toInt() else 0
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                TextButton(enabled = !offlineBusy && !offlineStore.status().installed, onClick = {
+                                    offlineBusy = true; offlineProgress = 0; offlineStatus = "Connecting to Hugging Face…"
+                                    offlineStore.downloadRecommended(
+                                        onProgress = { received, total ->
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                offlineProgress = if (total > 0) ((received * 100) / total).toInt() else 0
+                                            }
+                                        },
+                                        callback = { result ->
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                offlineBusy = false
+                                                offlineStatus = result.fold({ "DOWNLOAD VERIFIED • " + (it.bytes / (1024 * 1024)) + " MB • run the model test before relying on offline mode." }, { "Download failed: " + (it.message ?: "unknown error") })
+                                            }
                                         }
-                                    },
-                                    callback = { result ->
+                                    )
+                                }) { Text(if (offlineBusy) "DOWNLOADING…" else "DOWNLOAD MODEL", color = Neon) }
+                                TextButton(enabled = !offlineBusy && !offlineTesting && offlineStore.status().installed, onClick = {
+                                    offlineTesting = true
+                                    offlineStatus = "Loading the model on this phone. This can take a while…"
+                                    onTestOffline { result ->
                                         android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                            offlineBusy = false
-                                            offlineStatus = result.fold({ "MODEL DOWNLOADED • " + (it.bytes / (1024 * 1024)) + " MB • ready for first local inference" }, { "Download failed: " + (it.message ?: "unknown error") })
+                                            offlineTesting = false
+                                            offlineStatus = result.fold(
+                                                { "MODEL TEST PASSED • " + it.take(100) },
+                                                { "MODEL TEST FAILED • " + (it.message ?: "runtime error") }
+                                            )
                                         }
                                     }
-                                )
-                            }) { Text(if (offlineBusy) "DOWNLOADING…" else "DOWNLOAD MODEL", color = Neon) }
+                                }) { Text(if (offlineTesting) "TESTING…" else "TEST MODEL", color = Neon) }
+                            }
                         },
                         dismissButton = {
                             Row {
