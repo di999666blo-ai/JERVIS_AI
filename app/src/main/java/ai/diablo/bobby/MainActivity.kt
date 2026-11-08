@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.IntOffset
@@ -123,6 +124,12 @@ private fun BobbyHome(
     onSaveConfig: (String, String, String) -> Unit,
     onAskAi: (List<ChatLine>, (Result<String>) -> Unit) -> Unit
 ) {
+    val appContext = LocalContext.current
+    val memoryStore = remember { BobbyMemoryStore(appContext) }
+    var memoryOpen by remember { mutableStateOf(false) }
+    var memoryTitle by remember { mutableStateOf("") }
+    var memoryContent by remember { mutableStateOf("") }
+    var memoryItems by remember { mutableStateOf(memoryStore.list()) }
     var draft by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("IDLE") }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -176,6 +183,17 @@ private fun BobbyHome(
         }
     }
 
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { BobbyFileReader(appContext).read(uri) }
+                .onSuccess { file ->
+                    if (!file.text.isNullOrBlank()) chat.add(ChatLine(true, "Imported ${file.name}. Text was extracted locally."))
+                    else chat.add(ChatLine(true, "${file.name}: ${file.note}"))
+                }
+                .onFailure { chat.add(ChatLine(true, "File import failed: ${it.message}")) }
+        }
+    }
+
     val recognizer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
         if (!spoken.isNullOrBlank()) send(spoken) else state = "IDLE"
@@ -193,6 +211,8 @@ private fun BobbyHome(
                         Text("YOUR PERSONAL AI COMPANION", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
                     }
                     Column(horizontalAlignment = Alignment.End) {
+                        TextButton(onClick = { memoryItems = memoryStore.list(); memoryOpen = true }) { Text("MEMORY", color = Neon) }
+                        TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Text("ADD FILE", color = Neon) }
                         TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
                     }
@@ -249,6 +269,47 @@ private fun BobbyHome(
                     else "Offline starter chat is active. Add your AI provider key in AI SETTINGS for intelligent online conversation. Voice data installs through Android TTS.",
                     color = Color.Gray, style = MaterialTheme.typography.labelSmall
                 )
+                if (memoryOpen) {
+                    AlertDialog(
+                        onDismissRequest = { memoryOpen = false },
+                        title = { Text("BOBBY MEMORY") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Saved locally on this phone. Never save passwords, API keys or broker credentials.")
+                                OutlinedTextField(value = memoryTitle, onValueChange = { memoryTitle = it }, label = { Text("Memory title") }, singleLine = true)
+                                OutlinedTextField(value = memoryContent, onValueChange = { memoryContent = it }, label = { Text("What should Bobby remember?") }, minLines = 2)
+                                Text("SAVED MEMORIES (${memoryItems.size})", color = Neon)
+                                LazyColumn(Modifier.heightIn(max = 180.dp)) {
+                                    items(memoryItems) { item ->
+                                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(Modifier.weight(1f)) {
+                                                Text(item.title, color = Color.White)
+                                                Text(item.content.take(100), color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                            }
+                                            TextButton(onClick = { memoryStore.delete(item.id); memoryItems = memoryStore.list() }) { Text("DELETE", color = Neon) }
+                                        }
+                                    }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    TextButton(onClick = { memoryStore.clear(); memoryItems = emptyList() }) { Text("CLEAR ALL", color = Neon) }
+                                    TextButton(onClick = {
+                                        val report = memoryStore.exportJson()
+                                        val share = Intent(Intent.ACTION_SEND).apply { type = "application/json"; putExtra(Intent.EXTRA_TEXT, report) }
+                                        runCatching { appContext.startActivity(Intent.createChooser(share, "Export BOBBY memory").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                                    }) { Text("EXPORT", color = Neon) }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                runCatching { memoryStore.save("General", memoryTitle, memoryContent) }
+                                    .onSuccess { memoryTitle = ""; memoryContent = ""; memoryItems = memoryStore.list() }
+                                    .onFailure { chat.add(ChatLine(true, "Memory was not saved: ${it.message}")) }
+                            }) { Text("SAVE MEMORY", color = Neon) }
+                        },
+                        dismissButton = { TextButton(onClick = { memoryOpen = false }) { Text("CLOSE") } }
+                    )
+                }
                 if (settingsOpen) {
                     AlertDialog(
                         onDismissRequest = { settingsOpen = false },
