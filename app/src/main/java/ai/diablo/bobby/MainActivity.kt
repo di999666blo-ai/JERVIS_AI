@@ -166,6 +166,7 @@ private fun BobbyHome(
     var githubTokenDraft by remember { mutableStateOf("") }
     var customPluginName by remember { mutableStateOf("") }
     var customPluginUrl by remember { mutableStateOf("") }
+    var pluginSearchDraft by remember { mutableStateOf("") }
     val pluginStore = remember { BobbyPluginStore(appContext) }
     var derivAppId by remember { mutableStateOf("") }
     var derivToken by remember { mutableStateOf("") }
@@ -432,17 +433,29 @@ private fun BobbyHome(
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Text("Add integrations to Bobby. Each connector needs its own authorization; installing a connector does not grant it phone or account access.")
+                                OutlinedTextField(
+                                    value = pluginSearchDraft,
+                                    onValueChange = { pluginSearchDraft = it.take(80) },
+                                    label = { Text("Search integrations by name or category") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                val visiblePlugins = pluginStore.search(pluginSearchDraft)
+                                Text("${visiblePlugins.size} MATCHING INTEGRATIONS • ${pluginStore.catalog.size} LISTED", color = Neon)
+                                Text("Catalogue entries are discovery listings, not proof of a working connection. Each provider needs its own adapter and authorisation.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                 Text("AVAILABLE CONNECTORS", color = Neon)
-                                pluginStore.catalog.forEach { plugin ->
+                                visiblePlugins.forEach { plugin ->
                                     Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(12.dp)).padding(10.dp)) {
                                         Text(plugin.name, color = Color.White, style = MaterialTheme.typography.titleMedium)
+                                        Text("${plugin.category} • ${plugin.authType}", color = Neon, style = MaterialTheme.typography.labelSmall)
                                         Text(plugin.description, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                         Text(
                                             when {
-                                                plugin.id == "github" && pluginStore.hasGitHubToken() -> "CREDENTIAL SAVED SECURELY • API ACTIONS NOT YET WIRED"
-                                                plugin.id == "deriv" -> "AVAILABLE • ACCOUNT VERIFICATION ONLY"
-                                                pluginStore.isEnabled(plugin.id) -> "ADDED • CONNECTOR RUNTIME NOT YET WIRED"
-                                                else -> "NOT ADDED"
+                                                plugin.id == "github" && pluginStore.hasGitHubToken() -> "TOKEN SAVED SECURELY • API ACTIONS NOT YET WIRED"
+                                                plugin.id == "deriv" -> "ACCOUNT VERIFICATION ONLY • NO TRADING"
+                                                plugin.readiness == "FOUNDATION" -> "CREDENTIAL FOUNDATION ONLY • ADAPTER INCOMPLETE"
+                                                pluginStore.isEnabled(plugin.id) -> "SAVED TO YOUR LIST • PROVIDER ADAPTER NOT IMPLEMENTED"
+                                                else -> "CATALOGUE LISTING • NOT CONNECTED"
                                             },
                                             color = Neon,
                                             style = MaterialTheme.typography.labelSmall
