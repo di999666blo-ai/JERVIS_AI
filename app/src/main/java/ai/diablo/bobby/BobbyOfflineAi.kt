@@ -69,7 +69,7 @@ class BobbyOfflineAi(context: Context) {
                 }
                 try {
                     loadIfNeeded()
-                    val answer = requireNotNull(conversation).sendMessage(prompt).text.trim()
+                    val answer = requireNotNull(conversation).sendMessage(prompt).toString().trim()
                     require(answer.isNotBlank()) { "The offline model returned an empty answer." }
                     answer
                 } finally {

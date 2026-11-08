@@ -92,3 +92,8 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Hardened the 614 MB Hugging Face download with available-storage checks, exact advertised-size checks and SHA-256 verification against the public model file.
 - Added a TEST MODEL control in the Offline AI dialog to perform first local model load and inference and report success/failure in the UI.
 - GitHub Actions compilation and APK artifact are pending for the latest commits. No real-device test has been performed. The lightweight 0.6B model has limited reasoning ability compared with larger online models, and 4 GB RAM phones may be slow or run out of memory.
+
+
+## Latest build repair — 2026-11-08
+- GitHub Actions run `42534298157` failed during Kotlin compilation. PdfBox-Android uses the relocated `com.tom_roush.pdfbox` package namespace, not `org.apache.pdfbox`; LiteRT-LM 0.18.0 `Message` also does not expose the newer `.text` property.
+- Corrected the PDFBox imports and switched offline response extraction to the 0.18.0-compatible message string representation. Rebuild pending.
