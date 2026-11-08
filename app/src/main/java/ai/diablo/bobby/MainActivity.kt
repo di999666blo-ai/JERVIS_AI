@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -236,7 +237,7 @@ private fun BobbyHome(
                                 Text("OpenAI-compatible API. Your key is encrypted on this device.")
                                 OutlinedTextField(value = endpoint, onValueChange = { endpoint = it }, label = { Text("HTTPS API base URL") }, singleLine = true)
                                 OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Model") }, singleLine = true)
-                                OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, label = { Text("API key (paste here)") }, singleLine = true)
+                                OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, label = { Text("API key (paste here)") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
                                 Text("Default: OpenAI API. Key is stored with Android Keystore encryption; it is never committed to GitHub.", style = MaterialTheme.typography.bodySmall)
                             }
                         },
