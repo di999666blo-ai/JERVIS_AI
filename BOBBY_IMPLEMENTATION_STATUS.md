@@ -43,3 +43,10 @@ This file is the acceptance ledger. A capability is not complete because a scree
 - Added friendly buddy-style greeting and emoji use.
 - Not yet implemented: scheduled background birthday/important-day notifications, automatic daily weather push, and full conversational personalization from profile data.
 - User profile data is stored locally in app preferences. Do not treat it as encrypted credential storage.
+
+
+## Android communication sharing bridge (2026-11-08)
+- Added an Android Sharesheet action that lets the user share the recent BOBBY conversation to an installed, compatible app (for example WhatsApp, email or supported social apps).
+- Added an email-compose intent helper.
+- This is user-mediated sharing only: BOBBY does not silently read private WhatsApp/email inboxes, send messages in the background, or publish directly to social accounts.
+- Direct inbox access, real-time messaging and publishing require each service's supported APIs, account authorization, review/permissions and explicit user confirmation. YouTube upload and direct Instagram/Facebook publishing are not implemented by this bridge.
