@@ -4,21 +4,21 @@ import android.content.Intent
 import android.os.Bundle
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,40 +27,49 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.util.Locale
 import kotlin.math.roundToInt
 
 private val Void = Color(0xFF050505)
 private val Neon = Color(0xFFFF1744)
-private val Panel = Color(0xFF151015)
+private val Panel = Color(0xFF171017)
+data class ChatLine(val fromBobby: Boolean, val text: String)
 
 class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
+    private var selectedVoice: Voice? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         tts = TextToSpeech(this, this)
-        setContent { BobbyHome(
-            onSpeak = { text, tag ->
-                if (ttsReady) {
-                    val locale = when (tag) {
-                        "Pidgin (Nigeria)" -> Locale("en", "NG")
-                        else -> Locale.forLanguageTag(tag)
-                    }
-                    val result = tts?.setLanguage(locale)
-                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        tts?.setLanguage(Locale.getDefault())
-                    }
-                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply")
-                }
-            }
-        ) }
+        setContent {
+            BobbyHome(
+                onSpeak = { text -> if (ttsReady) tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply") },
+                onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } }
+            )
+        }
     }
 
-    override fun onInit(status: Int) { ttsReady = status == TextToSpeech.SUCCESS }
+    override fun onInit(status: Int) {
+        ttsReady = status == TextToSpeech.SUCCESS
+        if (ttsReady) {
+            val engine = tts ?: return
+            engine.language = Locale.UK
+            selectedVoice = engine.voices?.filter { it.locale.language == "en" }?.sortedBy {
+                val name = it.name.lowercase(Locale.ROOT)
+                when { "female" in name || "woman" in name -> 0; "en-gb" in name || "gb" in name -> 1; else -> 2 }
+            }?.firstOrNull()
+            selectedVoice?.let { engine.voice = it }
+            engine.setSpeechRate(0.94f)
+            engine.setPitch(1.08f)
+        }
+    }
+
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()
@@ -69,107 +78,109 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 }
 
 @Composable
-private fun BobbyHome(onSpeak: (String, String) -> Unit) {
-    var message by remember { mutableStateOf("I dey here. Talk to me.") }
-    var status by remember { mutableStateOf("READY") }
-    var language by remember { mutableStateOf("Pidgin (Nigeria)") }
-    var expanded by remember { mutableStateOf(false) }
+private fun BobbyHome(onSpeak: (String) -> Unit, onInstallVoice: () -> Unit) {
+    var draft by remember { mutableStateOf("") }
+    var state by remember { mutableStateOf("IDLE") }
     var bubbleOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-    val pulse = rememberInfiniteTransition(label = "bobby-pulse")
-    val breathing by pulse.animateFloat(
-        initialValue = 0.94f, targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "breathing"
-    )
-    val recognizer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
-        if (!spoken.isNullOrBlank()) {
-            message = spoken
-            status = "HEARD YOU"
-        } else status = "READY"
+    val chat = remember { mutableStateListOf(ChatLine(true, "Hey, I’m Bobby. I’m here with you. Talk naturally, ask me something, or tell me what’s on your mind.")) }
+    val pulse = rememberInfiniteTransition(label = "bobby-avatar")
+    val breathing by pulse.animateFloat(0.96f, 1.045f, infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breathing")
+    val listening by pulse.animateFloat(0.92f, 1.12f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "listening")
+
+    fun answerFor(input: String): String {
+        val q = input.trim().lowercase(Locale.ROOT)
+        return when {
+            q.isBlank() -> "I’m listening. Say something whenever you’re ready."
+            listOf("hello", "hi", "hey", "good morning", "good evening", "how are you").any { q.contains(it) } ->
+                "Hey! I’m doing well, and I’m glad you’re here. How’s your day going?"
+            q.contains("who are you") || q.contains("your name") ->
+                "I’m Bobby, your personal assistant. I’m still being built, but we can already chat, use voice input, and have me speak replies."
+            q.contains("thank") -> "You’re very welcome. I’ve got you."
+            q.contains("sad") || q.contains("stressed") || q.contains("tired") ->
+                "I’m sorry it’s been heavy. Want to tell me what happened? I’ll listen without judging."
+            q.contains("joke") -> "Why did the phone need glasses? It kept losing its contacts. I know, terrible one."
+            q.contains("time") -> "I can’t read your phone’s live clock in this first chat build yet. I don’t want to guess."
+            else -> "I hear you. I can keep the conversation going, but my full online AI brain is not connected yet, so I can’t claim this is deep AI understanding. Tell me a little more and I’ll do my best with what’s available."
+        }
     }
 
-    MaterialTheme(colorScheme = darkColorScheme(
-        background = Void, surface = Panel, primary = Neon,
-        onBackground = Color.White, onSurface = Color.White
-    )) {
+    fun send(text: String) {
+        val clean = text.trim()
+        if (clean.isEmpty()) return
+        chat.add(ChatLine(false, clean))
+        draft = ""
+        state = "THINKING"
+        val reply = answerFor(clean)
+        chat.add(ChatLine(true, reply))
+        state = "SPEAKING"
+        onSpeak(reply)
+        state = "IDLE"
+    }
+
+    val recognizer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        if (!spoken.isNullOrBlank()) send(spoken) else state = "IDLE"
+    }
+
+    MaterialTheme(colorScheme = darkColorScheme(background = Void, surface = Panel, primary = Neon, onBackground = Color.White, onSurface = Color.White)) {
         Surface(Modifier.fillMaxSize(), color = Void) {
             Column(
-                Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF210811), Void, Void))).padding(22.dp),
+                Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF280A16), Void, Void))).padding(horizontal = 18.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text("BOBBY", style = MaterialTheme.typography.headlineLarge, color = Neon)
-                Text("YOUR VOICE-FIRST AI COMPANION", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
-                Spacer(Modifier.height(42.dp))
+                Text("YOUR PERSONAL AI COMPANION", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.height(12.dp))
                 Box(
                     Modifier.offset { IntOffset(bubbleOffset.x.roundToInt(), bubbleOffset.y.roundToInt()) }
-                        .size(190.dp).scale(breathing)
-                        .background(Brush.radialGradient(listOf(Color(0xFF8D1236), Color(0xFF250914), Void)), CircleShape)
-                        .pointerInput(Unit) {
-                            detectDragGestures { change, drag ->
-                                change.consume()
-                                bubbleOffset += drag
-                            }
-                        },
+                        .size(116.dp).scale(if (state == "LISTENING") listening else breathing)
+                        .background(Brush.radialGradient(listOf(Color(0xFFB51D50), Color(0xFF3C0B1D), Void)), CircleShape)
+                        .pointerInput(Unit) { detectDragGestures { change, drag -> change.consume(); bubbleOffset += drag } },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("◉", color = Neon, style = MaterialTheme.typography.displayLarge)
+                    AnimatedContent(targetState = state, label = "avatar-expression") { current ->
+                        Text(when (current) { "LISTENING" -> "◉"; "THINKING" -> "◌"; "SPEAKING" -> "◉"; else -> "☺" }, color = Neon, fontSize = 58.sp)
+                    }
                 }
-                Spacer(Modifier.height(16.dp))
-                Text(status, color = Neon, style = MaterialTheme.typography.labelMedium)
-                Spacer(Modifier.height(22.dp))
-                Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(18.dp)) {
-                    Text(message, Modifier.padding(18.dp), color = Color.White)
-                }
-                Spacer(Modifier.height(18.dp))
-                Box {
-                    OutlinedButton(onClick = { expanded = true }) { Text(language) }
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        listOf("Pidgin (Nigeria)", "English (US)", "English (UK)", "Yoruba", "Igbo", "Hausa", "French", "Spanish", "Arabic", "Hindi", "Chinese").forEach {
-                            DropdownMenuItem(text = { Text(it) }, onClick = { language = it; expanded = false })
+                Text(state, color = Neon, style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.height(10.dp))
+                LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
+                    items(chat) { line ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (line.fromBobby) Arrangement.Start else Arrangement.End) {
+                            Surface(color = if (line.fromBobby) Panel else Color(0xFF421020), shape = RoundedCornerShape(16.dp), modifier = Modifier.widthIn(max = 310.dp)) {
+                                Text(line.text, Modifier.padding(13.dp), color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
                     }
                 }
-                Spacer(Modifier.height(14.dp))
-                Button(
-                    onClick = {
-                        status = "LISTENING"
-                        val localeTag = when (language) {
-                            "Pidgin (Nigeria)" -> "en-NG"
-                            "English (US)" -> "en-US"
-                            "English (UK)" -> "en-GB"
-                            "Yoruba" -> "yo-NG"
-                            "Igbo" -> "ig-NG"
-                            "Hausa" -> "ha-NG"
-                            "French" -> "fr-FR"
-                            "Spanish" -> "es-ES"
-                            "Arabic" -> "ar"
-                            "Hindi" -> "hi-IN"
-                            "Chinese" -> "zh-CN"
-                            else -> "en-US"
-                        }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicTextField(
+                        value = draft, onValueChange = { draft = it },
+                        modifier = Modifier.weight(1f).background(Panel, RoundedCornerShape(18.dp)).padding(14.dp),
+                        textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Neon),
+                        decorationBox = { inner -> if (draft.isEmpty()) Text("Talk to Bobby…", color = Color.Gray); inner() }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = { send(draft) }, colors = ButtonDefaults.buttonColors(containerColor = Neon)) { Text("SEND") }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(modifier = Modifier.weight(1f), onClick = {
+                        state = "LISTENING"
                         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, localeTag)
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Talk to Bobby")
+                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-NG")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Talk naturally to Bobby")
                         }
-                        runCatching { recognizer.launch(intent) }.onFailure {
-                            status = "VOICE INPUT UNAVAILABLE"
-                            message = "Speech recognition app/service is not available on this device."
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Neon),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("🎙  TALK TO BOBBY") }
-                OutlinedButton(
-                    onClick = { onSpeak(message, if (language == "Pidgin (Nigeria)") "Pidgin (Nigeria)" else when(language) {
-                        "English (US)" -> "en-US"; "English (UK)" -> "en-GB"; "French" -> "fr-FR"; "Spanish" -> "es-ES"
-                        "Arabic" -> "ar"; "Hindi" -> "hi-IN"; "Chinese" -> "zh-CN"; else -> "en"
-                    }) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("🔊 SPEAK") }
-                Spacer(Modifier.weight(1f))
-                Text("Wake phrase and floating overlay are planned next; they are not active in this first scaffold.", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                        runCatching { recognizer.launch(intent) }.onFailure { state = "VOICE UNAVAILABLE" }
+                    }) { Text("🎙 TALK") }
+                    OutlinedButton(modifier = Modifier.weight(1f), onClick = onInstallVoice) { Text("⬇ VOICE DATA") }
+                }
+                Text(
+                    "Voice data installs through your phone’s Text-to-Speech engine. Offline speech needs an installed offline voice. This build uses local starter replies until an AI provider is connected.",
+                    color = Color.Gray, style = MaterialTheme.typography.labelSmall
+                )
             }
         }
     }
