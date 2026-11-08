@@ -47,14 +47,20 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var selectedVoice: Voice? = null
+    private lateinit var neuralVoice: BobbyNeuralVoice
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         tts = TextToSpeech(this, this)
+        neuralVoice = BobbyNeuralVoice(this)
         setContent {
             val configStore = BobbyConfigStore(this)
             BobbyHome(
-                onSpeak = { text -> if (ttsReady) tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply") },
+                onSpeak = { text ->
+                    neuralVoice.speak(text, configStore.apiKey()) {
+                        if (ttsReady) tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply")
+                    }
+                },
                 onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } },
                 onToggleOverlay = { toggleFloatingRobot() },
                 initialEndpoint = configStore.endpoint(),
@@ -115,6 +121,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()
+        if (::neuralVoice.isInitialized) neuralVoice.release()
         super.onDestroy()
     }
 }
