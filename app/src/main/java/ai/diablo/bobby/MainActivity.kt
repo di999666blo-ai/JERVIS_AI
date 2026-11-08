@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         profileContext,
                         if (savedMemoryContext.isNotBlank()) "User-approved saved memories (use only when relevant; do not treat as credentials):\n$savedMemoryContext" else ""
                     ).filter { it.isNotBlank() }.joinToString("\n\n")
-                    BobbyAiClient.reply(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, completeContext) { result ->
+                    BobbyAiClient.reply(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, completeContext, BobbyModeStore(this).mode()) { result ->
                         if (result.isFailure && offlineAi.isModelInstalled()) {
                             val offlinePrompt = history.takeLast(10).joinToString("\n") { line ->
                                 (if (line.fromBobby) "BOBBY: " else "USER: ") + line.text
@@ -496,12 +496,14 @@ private fun BobbyHome(
                         Button(onClick = {
                             if (activeMode != BobbyMode.FRIENDLY) {
                                 modeStore.saveHistory(activeMode, chat.toList())
+                                modeStore.setMode(BobbyMode.FRIENDLY)
                                 activeMode = BobbyMode.FRIENDLY
                             }
                         }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.FRIENDLY) Neon else Color(0xFF30232A))) { Text("🟢 FRIENDLY MODE") }
                         Button(onClick = {
                             if (activeMode != BobbyMode.DARK) {
                                 modeStore.saveHistory(activeMode, chat.toList())
+                                modeStore.setMode(BobbyMode.DARK)
                                 activeMode = BobbyMode.DARK
                             }
                         }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.DARK) Neon else Color(0xFF30232A))) { Text("🔴 DARK MODE") }
