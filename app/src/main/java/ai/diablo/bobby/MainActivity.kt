@@ -192,6 +192,15 @@ private fun BobbyHome(
     onAskAiWithImage: (List<ChatLine>, String, (Result<String>) -> Unit) -> Unit
 ) {
     val appContext = LocalContext.current
+    val modeStore = remember { BobbyModeStore(appContext) }
+    var activeMode by remember { mutableStateOf(modeStore.mode()) }
+    val chat = remember(activeMode) {
+        mutableStateListOf<ChatLine>().apply {
+            addAll(modeStore.loadHistory(activeMode))
+            if (isEmpty()) add(ChatLine(true, if (activeMode == BobbyMode.FRIENDLY) "Hey, I’m Bobby. Friendly Mode is ready. 😊" else "DARK MODE ACTIVE • Privacy-focused research workspace. Tor is not automatically routing BOBBY traffic."))
+        }
+    }
+    LaunchedEffect(activeMode, chat.size) { modeStore.saveHistory(activeMode, chat.toList()) }
     val memoryStore = remember { BobbyMemoryStore(appContext) }
     val profileStore = remember { BobbyProfileStore(appContext) }
     var profile by remember { mutableStateOf(profileStore.load()) }
@@ -480,6 +489,37 @@ private fun BobbyHome(
                         TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
                     }
+                }
+                Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("BOBBY OPERATING MODE", color = Neon, style = MaterialTheme.typography.labelLarge)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            if (activeMode != BobbyMode.FRIENDLY) {
+                                modeStore.saveHistory(activeMode, chat.toList())
+                                activeMode = BobbyMode.FRIENDLY
+                            }
+                        }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.FRIENDLY) Neon else Color(0xFF30232A))) { Text("🟢 FRIENDLY MODE") }
+                        Button(onClick = {
+                            if (activeMode != BobbyMode.DARK) {
+                                modeStore.saveHistory(activeMode, chat.toList())
+                                activeMode = BobbyMode.DARK
+                            }
+                        }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.DARK) Neon else Color(0xFF30232A))) { Text("🔴 DARK MODE") }
+                    }
+                    Text(if (activeMode == BobbyMode.FRIENDLY) "Everyday assistant • work • learning • normal web research • standard integrations" else "Privacy research workspace • Tor Browser launcher • separate chat history • safety and network limits apply", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                    if (activeMode == BobbyMode.DARK) {
+                        Text("IMPORTANT: Only Tor Browser traffic uses Tor. BOBBY's AI/API calls and other phone apps are not routed through Tor.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = {
+                            val launch = appContext.packageManager.getLaunchIntentForPackage("org.torproject.torbrowser")
+                            if (launch != null) runCatching { appContext.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                            else runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.torbrowser"))) }
+                        }, modifier = Modifier.fillMaxWidth()) { Text("OPEN / INSTALL TOR BROWSER") }
+                    }
+                    TextButton(onClick = {
+                        modeStore.clearHistory(activeMode)
+                        chat.clear()
+                        chat.add(ChatLine(true, if (activeMode == BobbyMode.FRIENDLY) "Friendly Mode history cleared." else "Dark Mode session history cleared."))
+                    }) { Text("CLEAR THIS MODE'S HISTORY", color = Neon) }
                 }
                 Spacer(Modifier.height(6.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
