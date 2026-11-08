@@ -73,6 +73,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 onSaveConfig = { endpoint, model, key -> configStore.save(endpoint, model, key) },
                 onCloseOfflineModel = { offlineAi.close() },
                 onAskOffline = { prompt, done -> offlineAi.reply(prompt, done) },
+                onAskAiWithImage = { history, path, done ->
+                    BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> runOnUiThread { done(result) } }
+                },
                 onAskAi = { history, done ->
                     val p = BobbyProfileStore(this).load()
                     val profileContext = p?.let {
@@ -160,7 +163,8 @@ private fun BobbyHome(
     onSaveConfig: (String, String, String) -> Unit,
     onCloseOfflineModel: () -> Unit,
     onAskOffline: (String, (Result<String>) -> Unit) -> Unit,
-    onAskAi: (List<ChatLine>, (Result<String>) -> Unit) -> Unit
+    onAskAi: (List<ChatLine>, (Result<String>) -> Unit) -> Unit,
+    onAskAiWithImage: (List<ChatLine>, String, (Result<String>) -> Unit) -> Unit
 ) {
     val appContext = LocalContext.current
     val memoryStore = remember { BobbyMemoryStore(appContext) }
@@ -325,6 +329,49 @@ private fun BobbyHome(
         }
     }
 
+
+    val screenCaptureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val data = result.data
+        if (result.resultCode == android.app.Activity.RESULT_OK && data != null) {
+            val captureIntent = Intent(appContext, BobbyScreenCaptureService::class.java)
+                .setAction(BobbyScreenCaptureService.ACTION_CAPTURE)
+                .putExtra(BobbyScreenCaptureService.EXTRA_RESULT_CODE, result.resultCode)
+                .putExtra(BobbyScreenCaptureService.EXTRA_DATA, data)
+            runCatching {
+                if (android.os.Build.VERSION.SDK_INT >= 26) appContext.startForegroundService(captureIntent) else appContext.startService(captureIntent)
+                chat.add(ChatLine(true, "Screen capture approved. Capturing the current screen…"))
+            }.onFailure { chat.add(ChatLine(true, "Could not start screen capture: " + (it.message ?: "unknown error"))) }
+        } else chat.add(ChatLine(true, "Screen capture cancelled. Nothing was captured."))
+    }
+    DisposableEffect(appContext, aiEnabled) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: Intent?) {
+                when (intent?.action) {
+                    BobbyScreenCaptureService.ACTION_CAPTURED -> {
+                        val path = intent.getStringExtra(BobbyScreenCaptureService.EXTRA_PATH) ?: return
+                        val prompt = "Look at this screen capture. Tell me what is on screen and help with the most relevant visible task. Do not assume you can control the screen."
+                        chat.add(ChatLine(false, prompt))
+                        if (aiEnabled) {
+                            state = "THINKING"
+                            onAskAiWithImage(chat.toList(), path) { response ->
+                                val reply = response.getOrElse { "I captured the screen, but the selected AI model could not analyse images: " + (it.message ?: "unknown error") }
+                                chat.add(ChatLine(true, reply)); state = if (response.isSuccess) "IDLE" else "ERROR"
+                                if (response.isSuccess) onSpeak(reply)
+                            }
+                        } else chat.add(ChatLine(true, "Screen captured locally. Connect a vision-capable AI model in AI SETTINGS to let me describe it."))
+                    }
+                    BobbyScreenCaptureService.ACTION_FAILED -> chat.add(ChatLine(true, "Screen capture failed. Try again and keep BOBBY open."))
+                }
+            }
+        }
+        val filter = android.content.IntentFilter().apply {
+            addAction(BobbyScreenCaptureService.ACTION_CAPTURED); addAction(BobbyScreenCaptureService.ACTION_FAILED)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 33) appContext.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        else @Suppress("DEPRECATION") appContext.registerReceiver(receiver, filter)
+        onDispose { runCatching { appContext.unregisterReceiver(receiver) } }
+    }
+
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { BobbyFileReader(appContext).read(uri) }
@@ -374,6 +421,7 @@ private fun BobbyHome(
                         TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
                         TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
+                        TextButton(onClick = { screenCaptureLauncher.launch((appContext.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }) { Text("SEE MY SCREEN", color = Neon) }
                         TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
                     }
