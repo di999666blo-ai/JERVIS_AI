@@ -34,3 +34,12 @@ This file is the acceptance ledger. A capability is not complete because a scree
 ## Latest integration
 - Added in-app Memory panel: create, list, delete, clear and export local memories.
 - Added Android document picker wired to the bounded local text importer; imported content is not auto-uploaded.
+
+
+## Personal onboarding and buddy features (2026-11-08)
+- Added first-run profile onboarding for preferred name, age, birthday, and city.
+- Added locally stored important dates and birthday/date matching reminders shown when the app opens.
+- Added a city-based current-weather lookup using Open-Meteo geocoding and forecast endpoints; it requires internet and a city entered by the user. No background location tracking is used.
+- Added friendly buddy-style greeting and emoji use.
+- Not yet implemented: scheduled background birthday/important-day notifications, automatic daily weather push, and full conversational personalization from profile data.
+- User profile data is stored locally in app preferences. Do not treat it as encrypted credential storage.
