@@ -164,6 +164,9 @@ private fun BobbyHome(
     var derivOpen by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
     var githubTokenDraft by remember { mutableStateOf("") }
+    var githubStatus by remember { mutableStateOf("Not tested") }
+    var githubBusy by remember { mutableStateOf(false) }
+    val githubConnector = remember { BobbyGitHubConnector(appContext) }
     var customPluginName by remember { mutableStateOf("") }
     var customPluginUrl by remember { mutableStateOf("") }
     var pluginSearchDraft by remember { mutableStateOf("") }
@@ -483,9 +486,27 @@ private fun BobbyHome(
                                             )
                                             TextButton(onClick = {
                                                 runCatching { pluginStore.saveGitHubToken(githubTokenDraft) }
-                                                    .onSuccess { githubTokenDraft = ""; chat.add(ChatLine(true, "GitHub credential encrypted on this phone. GitHub repository actions still need their connector implementation.")) }
-                                                    .onFailure { chat.add(ChatLine(true, "GitHub credential was not saved: ${it.message}")) }
+                                                    .onSuccess { githubTokenDraft = ""; githubStatus = "Token saved securely. Test the connection." }
+                                                    .onFailure { githubStatus = "Token not saved: ${it.message}" }
                                             }) { Text("SAVE TOKEN SECURELY", color = Neon) }
+                                            Text(githubStatus, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                OutlinedButton(enabled = !githubBusy && pluginStore.hasGitHubToken(), onClick = {
+                                                    githubBusy = true; githubStatus = "Checking GitHub authorisation…"
+                                                    githubConnector.verify { result ->
+                                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                            githubBusy = false
+                                                            githubStatus = result.fold(
+                                                                { "CONNECTED: @" + it.login + " • " + it.publicRepos + " public repositories • identity read verified" },
+                                                                { "NOT CONNECTED: " + (it.message ?: "verification failed") }
+                                                            )
+                                                        }
+                                                    }
+                                                }) { Text(if (githubBusy) "TESTING…" else "TEST CONNECTION") }
+                                                TextButton(onClick = {
+                                                    pluginStore.removeGitHubToken(); githubStatus = "Disconnected. Token removed from this device."; githubTokenDraft = ""
+                                                }) { Text("DISCONNECT", color = Neon) }
+                                            }
                                         }
                                     }
                                 }

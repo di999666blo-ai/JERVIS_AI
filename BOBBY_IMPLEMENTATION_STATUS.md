@@ -43,3 +43,11 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Added an in-app plugin hub/catalogue entry point and local registry for GitHub, Deriv, Web Research and Google Drive, plus custom HTTPS connector registration.
 - GitHub fine-grained token can be stored using the Android Keystore encrypted vault. Use minimum read-only repository permissions.
 - Important: registry/configuration is not the same as an active connector. GitHub API operations, OAuth-based Drive access, web research, and custom connector execution still require their dedicated adapters and permission flows. The UI labels these limitations instead of pretending they work.
+
+
+## 2026-11-08 — Searchable plugin directory and GitHub identity adapter
+- Expanded the in-app plugin catalogue to 100+ provider listings across categories, with local name/category/description search.
+- Listings are explicitly labelled as catalogue-only unless a real adapter exists; enabling a listing does not claim a connection.
+- Added a read-only GitHub identity verification adapter using the encrypted Android Keystore token vault. Users can save a fine-grained token, test it against GET /user, and disconnect/remove it.
+- GitHub repository/issue/Actions write operations are still not implemented. OAuth flows for providers are still pending.
+- Build and device verification pending for this milestone.
