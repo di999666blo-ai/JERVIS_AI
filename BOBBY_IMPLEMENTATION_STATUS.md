@@ -8,16 +8,16 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Expanded assistant system instructions for factual accuracy, uncertainty, untrusted document handling, action confirmation and trading safety.
 - User-approved local memories are now included in the online assistant context (limited to recent 12 records); profile and local date/time context are also supplied.
 - Text-file imports can now be attached to the conversation and analysed by the configured online AI (up to 12,000 characters per attachment). The user must understand that selected text is sent to their configured AI provider for analysis.
-- Natural speech path with Android TTS fallback.
+- Natural neural speech path instructed to speak the response in its detected language, with Android TTS fallback selecting a best-effort language from the reply. Voice recognition no longer forces English and follows the system recognizer's language settings. Incoming-call announcements are localized for several common languages, including Yoruba, Hausa and Igbo; installed TTS voices and recognizer support vary.
 - Android Keystore AES-GCM vault and Deriv v3 WebSocket account-authorisation foundation. The current Deriv connector verifies account details only; it does not place trades.
 - Local memory/profile, onboarding, weather, basic text-file import, permission centre and demo-only trading guard.
-- Offline model file manager can import/remove .litertlm files into app-private storage. Model inference is NOT wired or verified.
+- Offline AI is wired to Google's LiteRT-LM CPU runtime with a multilingual Qwen3-0.6B assistant system prompt. The public 614 MB model downloads directly into app-private storage with size, free-space and SHA-256 verification. An in-app TEST MODEL action checks actual runtime loading/inference. Target-device performance and memory stability remain unverified.
 
 ## Not complete / not device-tested
 - PDF/Office/ZIP/image/audio/video extraction and vision/audio/video model analysis.
 - In-app web search/browser and source citations.
 - Deriv symbol catalogue, live tick streaming, charting, proposals, demo order lifecycle, portfolio and trading strategy. Live trading remains disabled.
-- LiteRT-LM runtime initialization, model inference, model selection and performance validation on the target phone.
+- LiteRT-LM runtime and in-app model download/test flow are implemented; actual model load, inference speed, memory use and stability still need target-phone verification.
 - Always-on wake word, background microphone, continuous voice conversation and interruption.
 - Alarm/reminder scheduling, notification reading, broad phone automation and call workflows.
 - Direct WhatsApp/email/social integrations and publishing.
@@ -81,3 +81,14 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - File parsing now runs off the UI thread. Images are sent only to the configured vision-capable AI provider after the user selects them; local text/PDF/Office extraction happens on-device.
 - Audio/video transcription and OCR for scanned PDFs are still not implemented. The current Qwen3 offline model is text-only; image understanding uses the configured online vision endpoint.
 - Build verification pending.
+
+
+## 2026-11-09 — Multilingual voice and offline model hardening
+- Removed the hard-coded `en-NG` speech-recognition language so the Android speech recognizer can follow the device/provider language settings instead of being forced to English.
+- Android TTS now starts with the device's preferred locale and selects a best-effort voice matching the generated reply's language when the installed engine supports it.
+- Neural speech instructions now explicitly request native-language pronunciation, tones, rhythm and code-switching instead of translating speech into English.
+- Incoming-call announcements now use localized phrases for Yoruba, Hausa, Igbo, French, Spanish, Portuguese, German, Italian, Arabic, Hindi, Chinese, Japanese and Korean; the phone must have a compatible TTS voice installed.
+- Offline Qwen3 model conversations now have a Bobby-specific multilingual system instruction, sampling configuration and bounded output length.
+- Hardened the 614 MB Hugging Face download with available-storage checks, exact advertised-size checks and SHA-256 verification against the public model file.
+- Added a TEST MODEL control in the Offline AI dialog to perform first local model load and inference and report success/failure in the UI.
+- GitHub Actions compilation and APK artifact are pending for the latest commits. No real-device test has been performed. The lightweight 0.6B model has limited reasoning ability compared with larger online models, and 4 GB RAM phones may be slow or run out of memory.
