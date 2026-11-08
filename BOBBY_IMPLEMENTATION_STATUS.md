@@ -97,3 +97,10 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 ## Latest build repair — 2026-11-08
 - GitHub Actions run `42534298157` failed during Kotlin compilation. PdfBox-Android uses the relocated `com.tom_roush.pdfbox` package namespace, not `org.apache.pdfbox`; LiteRT-LM 0.18.0 `Message` also does not expose the newer `.text` property.
 - Corrected the PDFBox imports and switched offline response extraction to the 0.18.0-compatible message string representation. Rebuild pending.
+
+
+## Verified build — 2026-11-08 23:23 UTC
+- Latest checked branch commit `060384bd9ad773cba5e664a5149f727058e64050` built successfully in GitHub Actions run `42534667935`; debug APK artifact `bobby-debug-apk` uploaded (approximately 67 MB).
+- The successful build includes PDFBox Android extraction, DOCX/XLSX/PPTX/ZIP text extraction, image downscaling for vision requests, LiteRT-LM offline model download/inference wiring and test control, plugin directory (142 provider entries), Brave Search adapter, GitHub identity verification, scheduled reminders, alarm/app-launch actions, user-authorised screen capture/vision flow, and notification-access-based incoming-call announcements.
+- This is compile/build verification only. The phone must still download and test the optional 614 MB Qwen3 0.6B model; real inference, API credentials, notification access, screen capture, alarms and reminders require device testing.
+- Still incomplete: wake-word always-on assistant, complete OAuth/API adapters for the entire catalogue, Deriv live market streaming/order execution, audio/video transcription, scanned-PDF OCR and full offline multimodal inference.
