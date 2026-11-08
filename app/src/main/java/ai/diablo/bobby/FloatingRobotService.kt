@@ -94,7 +94,12 @@ class FloatingRobotService : Service() {
         pulse.start()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
+        return START_STICKY
+    }
+
+    companion object { const val ACTION_STOP = "ai.diablo.bobby.STOP_FLOATING_ROBOT" }
 
     override fun onDestroy() {
         bubble?.let { runCatching { windowManager.removeView(it) } }
