@@ -51,3 +51,12 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Added a read-only GitHub identity verification adapter using the encrypted Android Keystore token vault. Users can save a fine-grained token, test it against GET /user, and disconnect/remove it.
 - GitHub repository/issue/Actions write operations are still not implemented. OAuth flows for providers are still pending.
 - Build and device verification pending for this milestone.
+
+
+## 2026-11-08 — Offline AI, web research and Android quick actions (build repair in progress)
+- Integrated Google's LiteRT-LM Android runtime dependency (0.18.0) and a CPU inference wrapper for an installed `.litertlm` model.
+- Added an in-app download flow for the public Apache-2.0 Qwen3-0.6B LiteRT-LM model (approximately 614 MB) from Hugging Face into app-private storage; model is not bundled into APK. Offline inference is used when no online AI key is configured and as fallback when online AI fails, if the model is installed.
+- Added Brave Search API adapter with encrypted API-key storage, search results, source opening and send-results-to-Bobby analysis workflow. User must create/authorise a Brave Search API key in the app.
+- Added platform-mediated alarm and app-launch commands; Android Clock/target app still presents its own confirmation UI. No permission bypass.
+- Latest build attempt failed at Gradle configuration because Kotlin 2.3 rejects legacy `kotlinOptions.jvmTarget`; migrating to compilerOptions in this commit before rebuilding.
+- No successful build or on-device inference claim yet for these new milestones.

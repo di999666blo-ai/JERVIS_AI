@@ -235,6 +235,34 @@ private fun BobbyHome(
         val clean = text.trim()
         if (clean.isEmpty()) return
         val lower = clean.lowercase(Locale.ROOT)
+        val alarm = Regex("""(?i)\b(?:set|create|make)\s+(?:(?:an?)\s+|my\s+)?alarm(?:\s+(?:for|to))?\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b""").find(clean)
+        if (alarm != null) {
+            runCatching {
+                var hour = alarm.groupValues[1].toInt()
+                val minute = alarm.groupValues[2].ifBlank { "0" }.toInt()
+                val meridian = alarm.groupValues[3].lowercase(Locale.ROOT)
+                if (meridian.isNotBlank()) {
+                    require(hour in 1..12) { "Use an hour from 1 to 12 with AM or PM." }
+                    if (meridian == "pm" && hour != 12) hour += 12
+                    if (meridian == "am" && hour == 12) hour = 0
+                }
+                BobbyAndroidActions.setAlarm(appContext, hour, minute)
+                "Clock opened with the requested alarm time. Review it and tap Save in your Clock app."
+            }.onSuccess { reply ->
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            }.onFailure { error ->
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't set that alarm: " + (error.message ?: "unknown error"))); onSpeak("I couldn't set that alarm."); return
+            }
+        }
+        val openApp = Regex("""(?i)\b(?:open|launch|start)\s+(.{2,40})$""").find(clean)
+        if (openApp != null) {
+            runCatching { BobbyAndroidActions.openApp(appContext, openApp.groupValues[1].trim()) }
+                .onSuccess { appName ->
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "Opening " + appName + ".")); onSpeak("Opening " + appName + "."); return
+                }.onFailure { error ->
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, error.message ?: "I couldn't open that app.")); return
+                }
+        }
         if (listOf("connect to my deriv", "connect deriv", "deriv account", "set up deriv", "setup deriv").any { lower.contains(it) }) {
             derivOpen = true
             chat.add(ChatLine(false, clean))
