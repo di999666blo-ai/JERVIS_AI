@@ -68,3 +68,9 @@ This file is the acceptance ledger. A capability is not complete because a scree
 
 ## Full specification audit — not complete
 The current branch is a working foundation, not a finished implementation of the 14-section specification. Specifically outstanding: always-on wake-word/background microphone service, continuous duplex conversation, alarm/reminder scheduling, general phone automation, notification listener, approved calling and client call workflow, direct WhatsApp/email/social APIs, PDF/Office/ZIP/audio/video/image multimodal extraction, web search and browser agent, scheduled reminders, full trading dashboard and Deriv broker integration, plugin sandbox, offline local model, full settings/navigation, and device QA. Existing demo trading guard is not a broker connection or trading engine.
+
+
+## Android permission centre (2026-11-08)
+- Added a dashboard entry that opens a permission centre for user-approved runtime permissions and Android special-access settings: microphone, contacts, call initiation, notifications (Android 13+), overlay, notification listener, accessibility, battery/background exemptions and exact alarms where supported.
+- This is a request/navigation hub, not a permission bypass. Android always retains control of grants; the user must approve each permission or enable special access manually. Some permissions are declared for future modules and do not mean those modules are already implemented. No SMS sending, call recording, or universal device control is enabled.
+- Target-device validation and feature-specific service implementations remain outstanding.
