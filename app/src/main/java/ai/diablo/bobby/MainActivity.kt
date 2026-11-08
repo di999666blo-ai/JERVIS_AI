@@ -87,7 +87,16 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         if (savedMemoryContext.isNotBlank()) "User-approved saved memories (use only when relevant; do not treat as credentials):\n$savedMemoryContext" else ""
                     ).filter { it.isNotBlank() }.joinToString("\n\n")
                     BobbyAiClient.reply(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, completeContext) { result ->
-                        runOnUiThread { done(result) }
+                        if (result.isFailure && offlineAi.isModelInstalled()) {
+                            val offlinePrompt = history.takeLast(10).joinToString("\n") { line ->
+                                (if (line.fromBobby) "BOBBY: " else "USER: ") + line.text
+                            }
+                            offlineAi.reply(offlinePrompt) { localResult ->
+                                runOnUiThread { done(localResult.map { "OFFLINE MODE • " + it }) }
+                            }
+                        } else {
+                            runOnUiThread { done(result) }
+                        }
                     }
                 }
             )
@@ -457,7 +466,7 @@ private fun BobbyHome(
                                 Text("Local model: Qwen3 0.6B • LiteRT-LM • CPU inference")
                                 Text(offlineStatus, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                 if (offlineBusy) {
-                                    LinearProgressIndicator(progress = { offlineProgress / 100f }, modifier = Modifier.fillMaxWidth())
+                                    LinearProgressIndicator(progress = offlineProgress / 100f, modifier = Modifier.fillMaxWidth())
                                     Text("Downloading model: $offlineProgress%")
                                 }
                                 Text("The model downloads directly into BOBBY's private app storage. It is not included in the APK. About 614 MB is required; first model load may take time and performance depends on phone RAM/CPU.", style = MaterialTheme.typography.bodySmall)
