@@ -1,1 +1,39 @@
-# BOBBY implementation status\n\nA successful APK build proves compilation only. Features are complete only after functional and target-device testing.\n\n## Implemented foundation\n- Android Kotlin/Jetpack Compose app, CI debug build, black/red dashboard foundation.\n- OpenAI-compatible chat, encrypted AI API key, neural speech path with Android TTS fallback.\n- Android Keystore AES-GCM vault for named credentials.\n- Deriv v3 WebSocket connector foundation: stores App ID/token encrypted, connects and authorizes, returns account ID/currency/balance. It does not trade.\n- Local memory/profile, onboarding, weather, floating robot shortcut, basic text-file import, permission centre.\n- Demo-only trading risk guard.\n- Offline model file manager imports/removes .litertlm files in app-private storage. Model inference is NOT wired or verified; importing a file does not enable offline chat.\n\n## Not complete / not device-tested\n- Natural-language intent router and guided Deriv connection UI; connector currently exists as a code foundation, not a finished dashboard wizard.\n- Deriv symbol catalogue, live ticks, charts, proposals, demo order lifecycle, portfolio and trading strategy. Live trading remains disabled.\n- LiteRT-LM engine initialization, model inference, model selection and performance validation on the target phone.\n- Always-on wake word, background microphone, continuous voice conversation and interruption.\n- Alarm/reminder scheduling, notification reading, phone automation and calls.\n- Direct WhatsApp/email/social integrations.\n- PDF/Office/ZIP/image/audio/video extraction and multimodal analysis.\n- Web search/browser workflows, plugin sandbox, full settings/navigation, release signing and physical-device QA.\n\n## Security\n- Never store credentials in ordinary chat memory or logs. Deriv credentials belong in the encrypted vault.\n- Start with minimum Deriv Read scope; Trade scope is only needed for trade operations. Never ask for tokens in chat.\n- Android permissions cannot be forced or bypassed. Sensitive actions require visible user confirmation.\n- BOBBY must identify itself as AI in calls. No trading profit guarantees.\n\n## Next milestones\n1. Surface the Deriv guided setup panel and verify the connector on a test account.\n2. Add public symbols and tick streaming, then demo-only trading with risk limits and emergency stop.\n3. Integrate and validate LiteRT-LM runtime on supported hardware with a small model.\n4. Add voice activation and platform-approved phone automation.\n5. Finish multimodal, web, communications and device QA.\n
+# BOBBY implementation status
+
+A successful GitHub Actions APK build proves compilation, not device-level functionality. Features are only marked fully complete after functional and target-device testing.
+
+## Implemented foundation
+- Android Kotlin/Jetpack Compose app, black/red dashboard, floating robot overlay and GitHub Actions debug APK build.
+- OpenAI-compatible online AI chat with configurable HTTPS endpoint/model and Android Keystore AES-GCM encrypted API-key storage.
+- Expanded assistant system instructions for factual accuracy, uncertainty, untrusted document handling, action confirmation and trading safety.
+- User-approved local memories are now included in the online assistant context (limited to recent 12 records); profile and local date/time context are also supplied.
+- Text-file imports can now be attached to the conversation and analysed by the configured online AI (up to 12,000 characters per attachment). The user must understand that selected text is sent to their configured AI provider for analysis.
+- Natural speech path with Android TTS fallback.
+- Android Keystore AES-GCM vault and Deriv v3 WebSocket account-authorisation foundation. The current Deriv connector verifies account details only; it does not place trades.
+- Local memory/profile, onboarding, weather, basic text-file import, permission centre and demo-only trading guard.
+- Offline model file manager can import/remove .litertlm files into app-private storage. Model inference is NOT wired or verified.
+
+## Not complete / not device-tested
+- PDF/Office/ZIP/image/audio/video extraction and vision/audio/video model analysis.
+- In-app web search/browser and source citations.
+- Deriv symbol catalogue, live tick streaming, charting, proposals, demo order lifecycle, portfolio and trading strategy. Live trading remains disabled.
+- LiteRT-LM runtime initialization, model inference, model selection and performance validation on the target phone.
+- Always-on wake word, background microphone, continuous voice conversation and interruption.
+- Alarm/reminder scheduling, notification reading, broad phone automation and call workflows.
+- Direct WhatsApp/email/social integrations and publishing.
+- Full plugin sandbox/management, release signing, complete navigation and physical-device QA.
+
+## Security and limits
+- AI API keys and Deriv credentials are encrypted locally with Android Keystore; never commit keys or paste them into chat.
+- Text imported for AI analysis is sent to the configured AI provider. Do not attach sensitive documents unless you accept that transfer.
+- Start with minimum Deriv Read scope. Trade scope is not currently used; no trade execution is implemented.
+- Android permissions cannot be forced or bypassed. Sensitive actions require visible user confirmation.
+- Offline model file import is not offline AI capability. Online AI requires an API key, network access and may incur provider charges.
+- BOBBY must identify itself as AI in calls. No trading profit guarantees.
+
+## Next milestones
+1. Validate Deriv account authorization and build a live public-market/tick viewer.
+2. Add chart rendering and a demo-only proposal/order lifecycle with strict risk limits and emergency stop.
+3. Integrate a compatible LiteRT-LM runtime/model and test on the target Android device.
+4. Add approved wake-word/background voice and platform-supported phone automation.
+5. Add document parsers and multimodal AI, web research, communication integrations and complete QA.
