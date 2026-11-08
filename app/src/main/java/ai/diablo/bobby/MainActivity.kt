@@ -126,6 +126,11 @@ private fun BobbyHome(
 ) {
     val appContext = LocalContext.current
     val memoryStore = remember { BobbyMemoryStore(appContext) }
+    val profileStore = remember { BobbyProfileStore(appContext) }
+    var profile by remember { mutableStateOf(profileStore.load()) }
+    var onboardingOpen by remember { mutableStateOf(profile == null) }
+    var weatherText by remember { mutableStateOf("Add your city in your profile to check today’s weather.") }
+    var weatherLoading by remember { mutableStateOf(false) }
     var memoryOpen by remember { mutableStateOf(false) }
     var memoryTitle by remember { mutableStateOf("") }
     var memoryContent by remember { mutableStateOf("") }
@@ -138,7 +143,8 @@ private fun BobbyHome(
     var apiKey by remember { mutableStateOf("") }
     var aiEnabled by remember { mutableStateOf(hasSavedKey) }
     var bubbleOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-    val chat = remember { mutableStateListOf(ChatLine(true, "Hey, I’m Bobby. I’m here with you. Talk naturally, ask me something, or tell me what’s on your mind.")) }
+    val chat = remember { mutableStateListOf(ChatLine(true, profile?.let { "Hey " + it.name + "! 😊 I’m Bobby, your buddy. I’ve got your back. What’s the plan today?" } ?: "Hey, I’m Bobby. Let’s get acquainted! 😊")) }
+    LaunchedEffect(profile) { profile?.reminders()?.forEach { reminder -> if (chat.none { it.text == reminder }) chat.add(0, ChatLine(true, reminder)) } }
     val pulse = rememberInfiniteTransition(label = "bobby-avatar")
     val breathing by pulse.animateFloat(0.96f, 1.045f, infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breathing")
     val listening by pulse.animateFloat(0.92f, 1.12f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "listening")
@@ -217,7 +223,27 @@ private fun BobbyHome(
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { onboardingOpen = true }, modifier = Modifier.weight(1f)) {
+                        Text(if (profile == null) "SET UP PROFILE" else "MY PROFILE")
+                    }
+                    OutlinedButton(onClick = {
+                        val city = profile?.city.orEmpty()
+                        if (city.isBlank()) weatherText = "Add your city in MY PROFILE first."
+                        else {
+                            weatherLoading = true
+                            Thread {
+                                val result = runCatching { BobbyWeather.today(city) }.getOrElse { "Weather unavailable: " + (it.message ?: "network error") }
+                                android.os.Handler(android.os.Looper.getMainLooper()).post { weatherText = result; weatherLoading = false }
+                            }.start()
+                        }
+                    }, modifier = Modifier.weight(1f), enabled = !weatherLoading) {
+                        Text(if (weatherLoading) "CHECKING…" else "TODAY’S WEATHER ☀")
+                    }
+                }
+                Text(weatherText, color = Color.LightGray, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                Spacer(Modifier.height(4.dp))
                 Box(
                     Modifier.offset { IntOffset(bubbleOffset.x.roundToInt(), bubbleOffset.y.roundToInt()) }
                         .size(116.dp).scale(if (state == "LISTENING") listening else breathing)
@@ -269,6 +295,22 @@ private fun BobbyHome(
                     else "Offline starter chat is active. Add your AI provider key in AI SETTINGS for intelligent online conversation. Voice data installs through Android TTS.",
                     color = Color.Gray, style = MaterialTheme.typography.labelSmall
                 )
+                if (onboardingOpen) {
+                    BobbyOnboarding(
+                        initial = profile,
+                        onSave = { updated ->
+                            runCatching { profileStore.save(updated) }
+                                .onSuccess {
+                                    profile = updated
+                                    onboardingOpen = false
+                                    chat.add(ChatLine(true, "Lovely to meet you, " + updated.name + "! 😊 I’ll remember your profile and the important dates you save here."))
+                                    if (updated.city.isNotBlank()) weatherText = "Weather location saved: " + updated.city + ". Tap TODAY’S WEATHER for current conditions."
+                                }
+                                .onFailure { chat.add(ChatLine(true, "Profile could not be saved: " + (it.message ?: "unknown error"))) }
+                        },
+                        onDismiss = if (profile == null) null else ({ onboardingOpen = false })
+                    )
+                }
                 if (memoryOpen) {
                     AlertDialog(
                         onDismissRequest = { memoryOpen = false },
