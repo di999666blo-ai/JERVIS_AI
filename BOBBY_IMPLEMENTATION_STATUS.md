@@ -50,3 +50,10 @@ This file is the acceptance ledger. A capability is not complete because a scree
 - Added an email-compose intent helper.
 - This is user-mediated sharing only: BOBBY does not silently read private WhatsApp/email inboxes, send messages in the background, or publish directly to social accounts.
 - Direct inbox access, real-time messaging and publishing require each service's supported APIs, account authorization, review/permissions and explicit user confirmation. YouTube upload and direct Instagram/Facebook publishing are not implemented by this bridge.
+
+
+## Natural voice and calls (2026-11-08)
+- User's required voice direction: calm, pleasant, anime-inspired female character voice with natural human-like delivery suitable for conversations and authorised calls.
+- Current implementation uses Android system TextToSpeech with a best-effort English voice selection, rate and pitch adjustment. This is only a fallback; it does not guarantee a natural neural voice and varies by installed TTS engine/device.
+- Production neural TTS provider integration, voice selection UI, pronunciation/prosody testing and target-device listening QA remain outstanding.
+- Outgoing phone calls and call conversation are not implemented. Any future call flow must obtain approval and clearly identify BOBBY as an AI assistant rather than impersonating a person.
