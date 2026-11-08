@@ -9,7 +9,7 @@ import kotlin.concurrent.thread
 data class AiSettings(val endpoint: String, val model: String, val apiKey: String)
 
 object BobbyAiClient {
-    fun reply(settings: AiSettings, conversation: List<ChatLine>, callback: (Result<String>) -> Unit) {
+    fun reply(settings: AiSettings, conversation: List<ChatLine>, profileContext: String = "", callback: (Result<String>) -> Unit) {
         thread(name = "bobby-ai-request") {
             val result = runCatching {
                 require(settings.endpoint.startsWith("https://")) { "Use a secure HTTPS API endpoint." }
@@ -20,7 +20,7 @@ object BobbyAiClient {
                         "You are Bobby, a warm, natural, respectful personal AI companion. " +
                         "Speak like a thoughtful human conversation partner, not a form or robotic help desk. " +
                         "Be concise by default, ask one useful follow-up when appropriate, admit uncertainty, " +
-                        "and never pretend to have performed actions you have not performed."))
+                        "and never pretend to have performed actions you have not performed. Use a friendly, lightly humorous tone with occasional relevant emojis. Be respectful, truthful, and do not blindly agree. " + profileContext))
                 conversation.takeLast(24).forEach { line ->
                     messages.put(JSONObject()
                         .put("role", if (line.fromBobby) "assistant" else "user")
