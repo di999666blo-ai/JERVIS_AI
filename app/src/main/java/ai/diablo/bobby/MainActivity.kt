@@ -62,7 +62,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 hasSavedKey = configStore.apiKey().isNotBlank(),
                 onSaveConfig = { endpoint, model, key -> configStore.save(endpoint, model, key) },
                 onAskAi = { history, done ->
-                    BobbyAiClient.reply(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history) { result ->
+                    val p = BobbyProfileStore(this).load()
+                    val profileContext = p?.let {
+                        "The user's preferred name is ${it.name}; age on profile: ${it.age}; birthday: ${it.birthday}; city: ${it.city}. " +
+                        "Use their name naturally, remember their birthday and saved important dates, and use their city only when answering local weather questions. " +
+                        "Do not infer or announce the current time as a reminder unless asked or a reminder feature explicitly triggers."
+                    }.orEmpty()
+                    BobbyAiClient.reply(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, profileContext) { result ->
                         runOnUiThread { done(result) }
                     }
                 }
