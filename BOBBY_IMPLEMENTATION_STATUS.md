@@ -29,3 +29,8 @@ This file is the acceptance ledger. A capability is not complete because a scree
 - Trading remains disabled; the guard is a precondition helper only and is not a broker integration.
 - Sensitive Android actions must use platform permission and confirmation flows.
 - Original upstream repository has no declared licence in the inspected GitHub metadata. Reuse of upstream source remains subject to rights verification.
+
+
+## Latest integration
+- Added in-app Memory panel: create, list, delete, clear and export local memories.
+- Added Android document picker wired to the bounded local text importer; imported content is not auto-uploaded.
