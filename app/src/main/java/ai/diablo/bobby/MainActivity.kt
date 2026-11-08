@@ -1,6 +1,7 @@
 package ai.diablo.bobby
 
 import android.content.Intent
+import android.content.ComponentCallbacks2
 import android.os.Bundle
 import android.provider.Settings
 import android.net.Uri
@@ -152,6 +153,18 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             engine.setSpeechRate(0.94f)
             engine.setPitch(1.08f)
         }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW && ::offlineAi.isInitialized) {
+            offlineAi.close()
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        if (::offlineAi.isInitialized) offlineAi.close()
     }
 
     override fun onDestroy() {
