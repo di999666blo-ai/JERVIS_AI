@@ -74,3 +74,10 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Added natural command parsing for reminders such as `remind me in 15 minutes to check the oven`.
 - Exact alarms are used only when Android grants exact-alarm access; otherwise BOBBY falls back to an inexact idle-aware alarm. Notifications require Android notification permission.
 - Build and device behaviour pending verification.
+
+
+## 2026-11-08 — PDF, Office, ZIP and image file extraction
+- Added local PDF text extraction with PdfBox-Android, bounded DOCX/XLSX/PPTX XML extraction, safe bounded ZIP text extraction, and image downscaling/JPEG preparation.
+- File parsing now runs off the UI thread. Images are sent only to the configured vision-capable AI provider after the user selects them; local text/PDF/Office extraction happens on-device.
+- Audio/video transcription and OCR for scanned PDFs are still not implemented. The current Qwen3 offline model is text-only; image understanding uses the configured online vision endpoint.
+- Build verification pending.
