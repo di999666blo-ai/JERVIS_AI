@@ -152,6 +152,13 @@ private fun BobbyHome(
     var state by remember { mutableStateOf("IDLE") }
     var settingsOpen by remember { mutableStateOf(false) }
     var permissionsOpen by remember { mutableStateOf(false) }
+    var derivOpen by remember { mutableStateOf(false) }
+    var derivAppId by remember { mutableStateOf("") }
+    var derivToken by remember { mutableStateOf("") }
+    var derivStatus by remember { mutableStateOf("Not connected") }
+    var derivBusy by remember { mutableStateOf(false) }
+    var derivAccount by remember { mutableStateOf<DerivAccountInfo?>(null) }
+    val derivConnector = remember { BobbyDerivConnector(appContext) }
     var endpoint by remember { mutableStateOf(initialEndpoint) }
     var model by remember { mutableStateOf(initialModel) }
     var apiKey by remember { mutableStateOf("") }
@@ -183,6 +190,14 @@ private fun BobbyHome(
     fun send(text: String) {
         val clean = text.trim()
         if (clean.isEmpty()) return
+        val lower = clean.lowercase(Locale.ROOT)
+        if (listOf("connect to my deriv", "connect deriv", "deriv account", "set up deriv", "setup deriv").any { lower.contains(it) }) {
+            derivOpen = true
+            chat.add(ChatLine(false, clean))
+            val reply = "I’ll open the secure Deriv setup. I need your numeric App ID and an API token with the minimum permissions. Paste them only into the secure fields here, never into this chat."
+            chat.add(ChatLine(true, reply)); onSpeak(reply)
+            return
+        }
         chat.add(ChatLine(false, clean))
         draft = ""
         if (!aiEnabled) {
@@ -235,6 +250,7 @@ private fun BobbyHome(
                         TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Text("ADD FILE", color = Neon) }
                         TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
+                        TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
                     }
                 }
