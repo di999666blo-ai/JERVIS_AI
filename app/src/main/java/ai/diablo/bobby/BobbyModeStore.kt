@@ -3,8 +3,6 @@ package ai.diablo.bobby
 import android.content.Context
 import org.json.JSONArray
 
-enum class BobbyMode { FRIENDLY, DARK }
-
 /** Stores independent operating mode and chat sessions locally on this device. */
 class BobbyModeStore(context: Context) {
     private val prefs = context.getSharedPreferences("bobby_operating_modes", Context.MODE_PRIVATE)
