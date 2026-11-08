@@ -104,3 +104,10 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - The successful build includes PDFBox Android extraction, DOCX/XLSX/PPTX/ZIP text extraction, image downscaling for vision requests, LiteRT-LM offline model download/inference wiring and test control, plugin directory (142 provider entries), Brave Search adapter, GitHub identity verification, scheduled reminders, alarm/app-launch actions, user-authorised screen capture/vision flow, and notification-access-based incoming-call announcements.
 - This is compile/build verification only. The phone must still download and test the optional 614 MB Qwen3 0.6B model; real inference, API credentials, notification access, screen capture, alarms and reminders require device testing.
 - Still incomplete: wake-word always-on assistant, complete OAuth/API adapters for the entire catalogue, Deriv live market streaming/order execution, audio/video transcription, scanned-PDF OCR and full offline multimodal inference.
+
+
+## 2026-11-09 — Neon robot artwork and launcher icon refresh
+- Reworked `bobby_robot_face.xml` into a more detailed neon-red anime-inspired assistant face with crown, headphones, illuminated eyes and layered dark hair. This asset is used by the floating robot bubble and adaptive launcher icon foreground.
+- Updated the adaptive launcher icon background with a dark red neon gradient and border. Both `ic_launcher.xml` and `ic_launcher_round.xml` already reference these shared drawables, so the APK launcher icon updates automatically.
+- This is a lightweight vector illustration inspired by the supplied reference, not a true 3D model/render. Full-body 3D character animation and distinct listening/thinking/speaking/sleeping artwork remain incomplete.
+- Build verification and on-device icon/bubble appearance check pending.
