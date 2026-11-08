@@ -26,3 +26,10 @@ No promise of perfect language coverage, unlimited intelligence, guaranteed wake
 
 ## Current status
 The initial Android scaffold is being added on `bobby-development`. This is not yet a finished APK.
+
+## Voice quality and calling acceptance criteria (2026-11-08)
+- Target voice: original, anime-inspired but natural adult female voice; calm, warm, gentle, clear, emotionally expressive and conversational. Avoid exaggerated anime pitch, metallic/eSpeak-like cadence, or copying a named actor/character.
+- Production target is high-quality neural text-to-speech with natural prosody, pauses, emphasis and pronunciation. Android system TTS remains a fallback only; actual voice quality depends on installed engine/device and must be tested on the target Huawei handset.
+- Keep voice settings configurable (voice, speaking rate, pitch where supported) and show which engine/voice is active. Do not label the current system TTS as human-level or production quality.
+- For outgoing calls to the user or clients, the assistant must identify itself as BOBBY/an AI assistant when the call begins; it must not pretend to be a human. Require the user's approval before placing a call, and require explicit approval for any message or action during the call.
+- Call handling is not implemented yet. Evaluate a compliant Android call flow and provider-supported calling integrations before marking this feature complete.
