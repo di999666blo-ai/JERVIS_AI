@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 initialModel = configStore.model(),
                 hasSavedKey = configStore.apiKey().isNotBlank(),
                 onSaveConfig = { endpoint, model, key -> configStore.save(endpoint, model, key) },
+                onCloseOfflineModel = { offlineAi.close() },
                 onAskOffline = { prompt, done -> offlineAi.reply(prompt, done) },
                 onAskAi = { history, done ->
                     val p = BobbyProfileStore(this).load()
@@ -157,6 +158,7 @@ private fun BobbyHome(
     initialModel: String,
     hasSavedKey: Boolean,
     onSaveConfig: (String, String, String) -> Unit,
+    onCloseOfflineModel: () -> Unit,
     onAskOffline: (String, (Result<String>) -> Unit) -> Unit,
     onAskAi: (List<ChatLine>, (Result<String>) -> Unit) -> Unit
 ) {
@@ -582,7 +584,7 @@ private fun BobbyHome(
                         dismissButton = {
                             Row {
                                 TextButton(enabled = !offlineBusy && offlineStore.status().installed, onClick = {
-                                    offlineAi.close(); offlineStore.removeModel(); offlineStatus = offlineStore.status().note
+                                    onCloseOfflineModel(); offlineStore.removeModel(); offlineStatus = offlineStore.status().note
                                 }) { Text("REMOVE MODEL") }
                                 TextButton(onClick = { offlineOpen = false }) { Text("CLOSE") }
                             }

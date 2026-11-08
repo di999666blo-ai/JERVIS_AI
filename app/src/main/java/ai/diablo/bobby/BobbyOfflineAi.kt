@@ -41,7 +41,7 @@ class BobbyOfflineAi(context: Context) {
                 require(prompt.isNotBlank()) { "Message is empty." }
                 loadIfNeeded()
                 val response = requireNotNull(conversation).sendMessage(prompt)
-                response.text.trim().ifBlank { response.toString().trim() }
+                response.toString().trim()
             }
             callback(result)
         }
