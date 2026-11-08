@@ -626,6 +626,19 @@ private fun BobbyHome(
                         text = {
                             Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("Connect Brave Search once. BOBBY stores the API key encrypted on this phone and uses it only for web searches.")
+                                Text("PRIVATE BROWSING: Tor Browser is a separate app. BOBBY can launch it, but does not control its Tor circuits or make other apps use Tor.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                OutlinedButton(onClick = {
+                                    val torLaunch = appContext.packageManager.getLaunchIntentForPackage("org.torproject.torbrowser")
+                                    if (torLaunch != null) {
+                                        torLaunch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        runCatching { appContext.startActivity(torLaunch) }
+                                            .onFailure { webStatus = "Could not open Tor Browser: " + (it.message ?: "unknown error") }
+                                    } else {
+                                        runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.torbrowser"))) }
+                                        webStatus = "Tor Browser is not installed. Opening its official installation page."
+                                    }
+                                }, modifier = Modifier.fillMaxWidth()) { Text("OPEN TOR BROWSER / INSTALL") }
+                                Text("Torch Browser is not the official Tor Browser and is not treated as a Tor/onion browser.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                 OutlinedTextField(value = webKeyDraft, onValueChange = { webKeyDraft = it }, label = { Text("Brave Search API key") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     TextButton(onClick = {
