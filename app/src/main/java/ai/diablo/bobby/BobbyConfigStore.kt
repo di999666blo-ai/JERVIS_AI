@@ -21,10 +21,9 @@ class BobbyConfigStore(context: Context) {
 
     fun save(endpoint: String, model: String, apiKey: String) {
         require(endpoint.startsWith("https://")) { "API endpoint must use HTTPS." }
-        prefs.edit().putString("endpoint", endpoint.trim())
-            .putString("model", model.trim())
-            .putString("api_key_encrypted", encrypt(apiKey.trim()))
-            .apply()
+        val editor = prefs.edit().putString("endpoint", endpoint.trim()).putString("model", model.trim())
+        if (apiKey.isNotBlank()) editor.putString("api_key_encrypted", encrypt(apiKey.trim()))
+        editor.apply()
     }
 
     private fun secretKey(): SecretKey {
