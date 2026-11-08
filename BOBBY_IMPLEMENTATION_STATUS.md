@@ -57,3 +57,14 @@ This file is the acceptance ledger. A capability is not complete because a scree
 - Current implementation uses Android system TextToSpeech with a best-effort English voice selection, rate and pitch adjustment. This is only a fallback; it does not guarantee a natural neural voice and varies by installed TTS engine/device.
 - Production neural TTS provider integration, voice selection UI, pronunciation/prosody testing and target-device listening QA remain outstanding.
 - Outgoing phone calls and call conversation are not implemented. Any future call flow must obtain approval and clearly identify BOBBY as an AI assistant rather than impersonating a person.
+
+
+## Voice and visual identity update (2026-11-08)
+- Added an OpenAI neural speech path using `gpt-4o-mini-tts` with the `nova` voice and a calm, warm, subtly anime-inspired adult female delivery instruction.
+- Neural speech uses the existing configured API key, requires internet access and a compatible OpenAI API account, and can incur API charges. If the key is absent or the request fails, playback falls back to Android system TextToSpeech. The result is not guaranteed to sound identical across devices; target-phone listening tests remain required.
+- Added original BOBBY-themed vector robot face artwork, adaptive Android launcher icon resources, and wired the robot artwork into the floating bubble.
+- The floating bubble is still a visual launcher/shortcut; it is not yet a persistent wake-word microphone or autonomous voice agent.
+- The newly generated promotional concept sheet is a design reference only; it has not been packaged as a full-resolution raster animation set. Separate production animation frames, splash artwork and final asset QA remain outstanding.
+
+## Full specification audit — not complete
+The current branch is a working foundation, not a finished implementation of the 14-section specification. Specifically outstanding: always-on wake-word/background microphone service, continuous duplex conversation, alarm/reminder scheduling, general phone automation, notification listener, approved calling and client call workflow, direct WhatsApp/email/social APIs, PDF/Office/ZIP/audio/video/image multimodal extraction, web search and browser agent, scheduled reminders, full trading dashboard and Deriv broker integration, plugin sandbox, offline local model, full settings/navigation, and device QA. Existing demo trading guard is not a broker connection or trading engine.
