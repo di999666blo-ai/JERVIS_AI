@@ -5,6 +5,8 @@ import android.net.Uri
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
+import android.os.StatFs
 import kotlin.concurrent.thread
 
 data class OfflineModelStatus(val installed: Boolean, val modelPath: String, val note: String, val bytes: Long = 0L)
@@ -39,7 +41,14 @@ class BobbyOfflineModelStore(context: Context) {
                     val code = connection.responseCode
                     require(code in 200..299) { "Model download failed (HTTP $code)." }
                     val expected = connection.contentLengthLong
-                    require(expected in 500_000_000L..750_000_000L) { "Unexpected model size. Download cancelled for safety." }
+                    require(expected in 600_000_000L..630_000_000L) {
+                        "Unexpected model size. Download cancelled for safety."
+                    }
+                    val available = StatFs(dir.absolutePath).availableBytes
+                    require(available > expected + 100_000_000L) {
+                        "Not enough free storage. At least ${(expected + 100_000_000L) / (1024 * 1024)} MB free is required."
+                    }
+                    val digest = MessageDigest.getInstance("SHA-256")
                     temp.outputStream().buffered().use { output ->
                         connection.inputStream.buffered().use { input ->
                             val buffer = ByteArray(1024 * 256)
@@ -48,7 +57,8 @@ class BobbyOfflineModelStore(context: Context) {
                                 val count = input.read(buffer)
                                 if (count < 0) break
                                 total += count
-                                require(total <= 750_000_000L) { "Model exceeded the allowed size." }
+                                require(total <= expected) { "Model exceeded the advertised download size." }
+                                digest.update(buffer, 0, count)
                                 output.write(buffer, 0, count)
                                 onProgress(total, expected)
                             }
@@ -56,6 +66,10 @@ class BobbyOfflineModelStore(context: Context) {
                         }
                     }
                     require(temp.length() == expected) { "Downloaded model size check failed." }
+                    val sha256 = digest.digest().joinToString("") { "%02x".format(it) }
+                    require(sha256 == "c5f39b4191926786c3e6668b62af4d6eb15248dfc7a5348252a9b406f33f2108") {
+                        "Model integrity check failed. The incomplete or altered download was rejected."
+                    }
                     if (target.exists()) target.delete()
                     check(temp.renameTo(target)) { "Could not install model in app storage." }
                     status()
