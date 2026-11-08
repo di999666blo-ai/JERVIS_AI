@@ -69,6 +69,27 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    private var floatingRobotRunning = false
+
+    private fun toggleFloatingRobot() {
+        if (!Settings.canDrawOverlays(this)) {
+            val permissionIntent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivity(permissionIntent)
+            return
+        }
+
+        if (floatingRobotRunning) {
+            stopService(Intent(this, FloatingRobotService::class.java))
+            floatingRobotRunning = false
+        } else {
+            startService(Intent(this, FloatingRobotService::class.java))
+            floatingRobotRunning = true
+        }
+    }
+
     override fun onInit(status: Int) {
         ttsReady = status == TextToSpeech.SUCCESS
         if (ttsReady) {
