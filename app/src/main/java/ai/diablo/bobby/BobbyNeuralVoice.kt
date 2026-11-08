@@ -29,7 +29,7 @@ class BobbyNeuralVoice(private val context: Context) {
                     put("voice", "nova")
                     put("input", text.take(3500))
                     put("response_format", "mp3")
-                    put("instructions", "Speak as Bobby, a calm, warm, gentle adult female assistant with a subtle anime-inspired charm. Sound like a natural real conversational speaker, not a cartoon or robot. Use relaxed pacing, clear pronunciation, natural pauses and soft expressive intonation. Avoid exaggerated high pitch.")
+                    put("instructions", "You are Bobby, a calm, warm, natural adult female assistant. FIRST detect the language and dialect of the input text. Speak the entire response in that same language, using its correct native pronunciation, phonology, tones, stress, rhythm and natural intonation. If the text mixes languages, preserve the language of each phrase and pronounce each phrase naturally; do not translate it into English. If the input is Yoruba, Hausa, Igbo, Nigerian Pidgin, Arabic, French, Spanish, Portuguese, Hindi, Chinese, Japanese, Korean, or any other language you can speak, use that language rather than defaulting to English. Keep names as written and pronounce them as naturally as possible. Sound warm and conversational, with relaxed pacing and no exaggerated cartoon voice.")
                 }.toString()
                 connection = (URL("https://api.openai.com/v1/audio/speech").openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
