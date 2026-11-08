@@ -151,6 +151,7 @@ private fun BobbyHome(
     var draft by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("IDLE") }
     var settingsOpen by remember { mutableStateOf(false) }
+    var permissionsOpen by remember { mutableStateOf(false) }
     var endpoint by remember { mutableStateOf(initialEndpoint) }
     var model by remember { mutableStateOf(initialModel) }
     var apiKey by remember { mutableStateOf("") }
@@ -233,6 +234,7 @@ private fun BobbyHome(
                         TextButton(onClick = { memoryItems = memoryStore.list(); memoryOpen = true }) { Text("MEMORY", color = Neon) }
                         TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Text("ADD FILE", color = Neon) }
                         TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
+                        TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
                         TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
                     }
                 }
@@ -374,6 +376,9 @@ private fun BobbyHome(
                         },
                         dismissButton = { TextButton(onClick = { memoryOpen = false }) { Text("CLOSE") } }
                     )
+                }
+                if (permissionsOpen) {
+                    BobbyPermissionCenter(onDismiss = { permissionsOpen = false })
                 }
                 if (settingsOpen) {
                     AlertDialog(
