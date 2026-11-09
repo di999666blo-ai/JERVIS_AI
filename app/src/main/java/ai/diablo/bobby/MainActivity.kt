@@ -214,6 +214,12 @@ private fun BobbyHome(
     var draft by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("IDLE") }
     var settingsOpen by remember { mutableStateOf(false) }
+    var agentOpen by remember { mutableStateOf(false) }
+    var agentRequest by remember { mutableStateOf("") }
+    var agentPlan by remember { mutableStateOf("") }
+    var agentBusy by remember { mutableStateOf(false) }
+    val agentRuntime = remember { BobbyAgentRuntime(appContext) }
+    var agentHistory by remember { mutableStateOf(agentRuntime.recentTasks()) }
     var permissionsOpen by remember { mutableStateOf(false) }
     var derivOpen by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
@@ -481,6 +487,7 @@ private fun BobbyHome(
                         TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Text("ADD FILE", color = Neon) }
                         TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
                         TextButton(onClick = { pluginsOpen = true }) { Text("ADD PLUGINS", color = Neon) }
+                        TextButton(onClick = { agentHistory = agentRuntime.recentTasks(); agentOpen = true }) { Text("ECC AGENT", color = Neon) }
                         TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
                         TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
@@ -921,6 +928,51 @@ private fun BobbyHome(
                             }) { Text("SAVE SECURELY") }
                         },
                         dismissButton = { TextButton(onClick = { derivOpen = false }) { Text("CLOSE") } }
+                    )
+                }
+                if (agentOpen) {
+                    AlertDialog(
+                        onDismissRequest = { if (!agentBusy) agentOpen = false },
+                        title = { Text("BOBBY AGENT • ECC-INSPIRED") },
+                        text = {
+                            Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Task planner and permission-gated tool registry. This mobile runtime is inspired by ECC workflows; it is not the Codex desktop plugin.")
+                                OutlinedTextField(value = agentRequest, onValueChange = { agentRequest = it.take(4000) }, label = { Text("What should Bobby work on?") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                                Text("REGISTERED TOOLS", color = Neon)
+                                agentRuntime.tools.forEach { tool ->
+                                    Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(8.dp)).padding(8.dp)) {
+                                        Text(tool.label + if (tool.available) " • AVAILABLE FOUNDATION" else " • NOT CONNECTED", color = if (tool.available) Color(0xFF8BC34A) else Color(0xFFFFB74D))
+                                        Text(tool.description, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                        if (tool.requiresConfirmation) Text("Approval required before consequential use.", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                                if (agentBusy) { CircularProgressIndicator(color = Neon); Text("BOBBY is preparing the task plan…") }
+                                if (agentPlan.isNotBlank()) { Text("TASK PLAN", color = Neon); Text(agentPlan, color = Color.White, style = MaterialTheme.typography.bodySmall) }
+                                Text("RECENT TASKS (" + agentHistory.size + ")", color = Neon)
+                                agentHistory.take(5).forEach { task -> Text(task.status + " • " + task.request.take(90), color = Color.LightGray, style = MaterialTheme.typography.bodySmall) }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(enabled = !agentBusy && agentRequest.isNotBlank() && aiEnabled, onClick = {
+                                agentBusy = true
+                                agentPlan = ""
+                                val instruction = agentRuntime.plannerInstruction(agentRequest, activeMode)
+                                onAskAi(listOf(ChatLine(false, instruction))) { result ->
+                                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                        agentBusy = false
+                                        agentPlan = result.getOrElse { "Planning failed: " + (it.message ?: "AI provider unavailable.") }
+                                        agentRuntime.saveTask(agentRequest, if (result.isSuccess) "PLAN_READY" else "PLAN_FAILED", agentPlan)
+                                        agentHistory = agentRuntime.recentTasks()
+                                    }
+                                }
+                            }) { Text("PLAN TASK", color = Neon) }
+                        },
+                        dismissButton = {
+                            Row {
+                                TextButton(onClick = { agentRuntime.clearHistory(); agentHistory = emptyList() }) { Text("CLEAR HISTORY", color = Neon) }
+                                TextButton(onClick = { agentOpen = false }) { Text("CLOSE") }
+                            }
+                        }
                     )
                 }
                 if (settingsOpen) {
