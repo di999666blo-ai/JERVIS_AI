@@ -111,8 +111,9 @@ Do not merge to master without the owner's approval.
 - 🟢 Build #180 succeeded for the initial accessibility service registration.
 - 🟢 Build #187 succeeded after the guest session scope fix.
 - 🟢 Build #190 succeeded for the floating-bubble-to-voice integration at commit `8f353cef79b529a3a14d64dc3e2b8f192d7f09dc`.
+- 🟢 Build #193 succeeded on latest code/documentation commit `b06411e0d19d181e305938602d170362e7c4966c`; APK artifact and release assets were verified.
 - 🔴 Build #186 failed because the Compose guest-session variable was not in scope; corrected in `cd486ab`, and build #187 then passed.
-- 🟡 The two latest small changes (`f119b87`, `5ee2acd`) and this document update still need their own final CI run.
+- The latest XML, permission-centre and checklist changes are included in successful build #193.
 
 ### What works in code now (not phone-tested)
 - The owner can introduce a guest with a phrase like “Meet my friend Ahmed”. BOBBY saves the guest's display name for the current social session and asks the AI to greet them naturally.
