@@ -60,3 +60,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+## Optional offline Android voice engines
+
+BOBBY's Offline Voice Library links to optional third-party Android TTS applications; their source code and model weights are not bundled into BOBBY. BOBBY uses Android's standard TextToSpeech API and follows the engine selected by the user in Android system settings.
+
+- [NekoSpeak](https://github.com/DetentionHall/NekroSpeak) is an independently maintained offline TTS application. Its source repository declares the application code MIT-licensed; bundled models and dependencies may carry separate licenses. The repository's current Android minimum is API 26.
+- [RHVoice](https://rhvoice.org/) is an independently maintained offline Android TTS engine. Install its app and voice data separately; consult its own license and voice-specific notices.
+- [Marmalade TTS](https://github.com/maxwhipw/marmalade-tts-android) is an optional independent project, but its current Android release requires API 28 (Android 9), so it is not offered for installation from BOBBY on Android 8 (API 26).
+
+These are external app links, not bundled libraries, and BOBBY does not claim to install or control them silently.
