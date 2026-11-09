@@ -35,7 +35,7 @@ class BobbyExternalIntegrations(private val context: Context) {
         if (provider in PROVIDERS) vault.remove("external_${provider}_token")
     }
 
-    fun verifyGoogle(callback: (Result<String>) -> Unit, unused: Unit = Unit) {
+    fun verifyGoogle(callback: (Result<String>) -> Unit) {
         run("google", callback) { token ->
             val gmail = getJson("https://gmail.googleapis.com/gmail/v1/users/me/profile", token)
             val calendar = getJson("https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1", token)
@@ -46,7 +46,7 @@ class BobbyExternalIntegrations(private val context: Context) {
     }
 
     fun verifyMeta(callback: (Result<String>) -> Unit) = run("meta", callback) { token ->
-        val data = getJson("https://graph.facebook.com/v22.0/me?fields=id,name", token)
+        val data = getJson("https://graph.facebook.com/me?fields=id,name", token)
         "Meta connected: ${data.optString("name", "account")} (ID ${data.optString("id")})."
     }
 
@@ -58,7 +58,7 @@ class BobbyExternalIntegrations(private val context: Context) {
 
     fun verifyTelegram(callback: (Result<String>) -> Unit) = run("telegram", callback) { token ->
         val data = getJson("https://api.telegram.org/bot$token/getMe", null)
-        require(data.optBoolean("ok")) { data.optJSONObject("description")?.toString() ?: "Telegram rejected this bot token." }
+        require(data.optBoolean("ok")) { data.optString("description").ifBlank { "Telegram rejected this bot token." } }
         val user = data.optJSONObject("result") ?: error("Telegram returned no bot profile.")
         "Telegram bot connected: @${user.optString("username")}."
     }
