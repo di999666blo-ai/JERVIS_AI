@@ -237,6 +237,8 @@ private fun BobbyHome(
     var memoryOpen by remember { mutableStateOf(false) }
     var memoryTitle by remember { mutableStateOf("") }
     var memoryContent by remember { mutableStateOf("") }
+    var memoryCategory by remember { mutableStateOf("General") }
+    var memorySearchQuery by remember { mutableStateOf("") }
     var memoryItems by remember { mutableStateOf(memoryStore.list()) }
     var draft by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("IDLE") }
@@ -689,15 +691,19 @@ private fun BobbyHome(
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("Saved locally on this phone. Never save passwords, API keys or broker credentials.")
+                                OutlinedTextField(value = memoryCategory, onValueChange = { memoryCategory = it }, label = { Text("Folder: Personal / Projects / Important Dates / Instructions / General") }, singleLine = true)
                                 OutlinedTextField(value = memoryTitle, onValueChange = { memoryTitle = it }, label = { Text("Memory title") }, singleLine = true)
                                 OutlinedTextField(value = memoryContent, onValueChange = { memoryContent = it }, label = { Text("What should Bobby remember?") }, minLines = 2)
-                                Text("SAVED MEMORIES (${memoryItems.size})", color = Neon)
+                                OutlinedTextField(value = memorySearchQuery, onValueChange = { memorySearchQuery = it }, label = { Text("Search memory vault") }, singleLine = true)
+                                val visibleMemories = memoryItems.filter { item -> memorySearchQuery.isBlank() || item.title.contains(memorySearchQuery, true) || item.content.contains(memorySearchQuery, true) || item.category.contains(memorySearchQuery, true) }
+                                Text("MEMORY VAULT • ${visibleMemories.size} ITEMS", color = Neon)
                                 LazyColumn(Modifier.heightIn(max = 180.dp)) {
-                                    items(memoryItems) { item ->
+                                    items(visibleMemories) { item ->
                                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                             Column(Modifier.weight(1f)) {
+                                                Text(item.category.uppercase(), color = Neon, style = MaterialTheme.typography.labelSmall)
                                                 Text(item.title, color = Color.White)
-                                                Text(item.content.take(100), color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                                Text(item.content.take(160), color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                             }
                                             TextButton(onClick = { memoryStore.delete(item.id); memoryItems = memoryStore.list() }) { Text("DELETE", color = Neon) }
                                         }
@@ -715,7 +721,7 @@ private fun BobbyHome(
                         },
                         confirmButton = {
                             TextButton(onClick = {
-                                runCatching { memoryStore.save("General", memoryTitle, memoryContent) }
+                                runCatching { memoryStore.save(memoryCategory, memoryTitle, memoryContent) }
                                     .onSuccess { memoryTitle = ""; memoryContent = ""; memoryItems = memoryStore.list() }
                                     .onFailure { chat.add(ChatLine(true, "Memory was not saved: ${it.message}")) }
                             }) { Text("SAVE MEMORY", color = Neon) }
