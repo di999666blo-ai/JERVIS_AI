@@ -7,4 +7,4 @@
     android:canPerformGestures="true"
     android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
     android:description="@string/bobby_accessibility_description"
-    android:packageNames="" />
+ />
