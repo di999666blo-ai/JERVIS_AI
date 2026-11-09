@@ -66,9 +66,11 @@ class FloatingRobotService : Service() {
                     }
                     MotionEvent.ACTION_UP -> {
                         if (!moved) {
-                            val launch = packageManager.getLaunchIntentForPackage(packageName)
-                            launch?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                            if (launch != null) startActivity(launch)
+                            val launch = Intent(this@FloatingRobotService, MainActivity::class.java).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                                putExtra(EXTRA_START_VOICE, true)
+                            }
+                            startActivity(launch)
                         }
                         return true
                     }
@@ -98,7 +100,7 @@ class FloatingRobotService : Service() {
         return START_STICKY
     }
 
-    companion object { const val ACTION_STOP = "ai.diablo.bobby.STOP_FLOATING_ROBOT" }
+    companion object { const val ACTION_STOP = "ai.diablo.bobby.STOP_FLOATING_ROBOT"; const val EXTRA_START_VOICE = "ai.diablo.bobby.EXTRA_START_VOICE" }
 
     override fun onDestroy() {
         bubble?.let { runCatching { windowManager.removeView(it) } }
