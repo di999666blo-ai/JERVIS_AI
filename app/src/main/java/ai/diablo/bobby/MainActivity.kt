@@ -82,14 +82,14 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 onAskOffline = { prompt, done -> offlineAi.reply(prompt, done) },
                 onTestOffline = { done -> offlineAi.reply("Reply exactly: BOBBY OFFLINE MODEL TEST PASSED.", done) },
                 onAskAiWithImage = { history, path, done ->
-                    BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> hostActivity?.runOnUiThread { done(result) } }
+                    BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> android.os.Handler(android.os.Looper.getMainLooper()).post { done(result) } }
                 },
                 onAskAi = askAi@{ history, done ->
                     val latestUserMessage = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
                     val memoryVault = BobbyMemoryStore(this)
                     val capturedMemory = runCatching { memoryVault.rememberFromMessage(latestUserMessage) }.getOrNull()
                     if (capturedMemory != null) {
-                        runOnUiThread { done(Result.success("I've saved that in your ${capturedMemory.category} memory folder. You can find, review or delete it in MEMORY VAULT.")) }
+                        android.os.Handler(android.os.Looper.getMainLooper()).post { done(Result.success("I've saved that in your ${capturedMemory.category} memory folder. You can find, review or delete it in MEMORY VAULT.")) }
                         return@askAi
                     }
                     val p = BobbyProfileStore(this).load()
@@ -117,10 +117,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                                 (if (line.fromBobby) "BOBBY: " else "USER: ") + line.text
                             }
                             offlineAi.reply(offlinePrompt) { localResult ->
-                                runOnUiThread { done(localResult.map { "OFFLINE MODE • " + it }) }
+                                android.os.Handler(android.os.Looper.getMainLooper()).post { done(localResult.map { "OFFLINE MODE • " + it }) }
                             }
                         } else {
-                            runOnUiThread { done(result) }
+                            android.os.Handler(android.os.Looper.getMainLooper()).post { done(result) }
                         }
                         }
                     }
@@ -129,7 +129,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                             val context = searchResult.getOrElse { emptyList() }.take(6).mapIndexed { index, item ->
                                 "[${index+1}] ${item.title}\n${item.description}\nSource: ${item.url}"
                             }.joinToString("\n\n")
-                            runOnUiThread {
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
                                 if (context.isBlank()) askWithContext("Web search was attempted but returned no usable results. Tell the user live sources could not be verified.")
                                 else askWithContext(context)
                             }
@@ -1098,7 +1098,7 @@ private fun BobbyHome(
                         confirmButton = {
                             Row {
                                 TextButton(enabled = !updateBusy, onClick = {
-                                    if (android.os.Build.VERSION.SDK_INT >= 26 && hostActivity?.packageManager?.canRequestPackageInstalls() != true) {
+                                    if (android.os.Build.VERSION.SDK_INT >= 26 && appContext.packageManager?.canRequestPackageInstalls() != true) {
                                         appContext.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${appContext.packageName}")))
                                         updateStatus = "Allow BOBBY to install updates, return here, then check again."
                                     } else {
@@ -1106,7 +1106,7 @@ private fun BobbyHome(
                                         updateStatus = "Checking the latest public release…"
                                         Thread {
                                             val result = runCatching { updateManager.checkLatest() }
-                                            runOnUiThread {
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
                                                 updateBusy = false
                                                 result.onSuccess { pendingUpdate = it; updateStatus = "Update found. Tap INSTALL UPDATE to continue." }
                                                     .onFailure { updateStatus = it.message ?: "No update could be checked." }
@@ -1120,7 +1120,7 @@ private fun BobbyHome(
                                     updateStatus = "Downloading and verifying APK…"
                                     Thread {
                                         val result = runCatching { updateManager.downloadAndPromptInstall(selected) }
-                                        runOnUiThread {
+                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
                                             updateBusy = false
                                             updateStatus = result.fold(
                                                 { "APK verified. Android's installer should now ask you to confirm the update." },
