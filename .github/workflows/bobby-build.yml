@@ -1,0 +1,70 @@
+name: BOBBY Free 3D Asset Builder
+
+on:
+  push:
+    branches: [bobby-development]
+    paths:
+      - "blender/**"
+      - "scripts/generate_outfits.py"
+      - ".github/workflows/bobby-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bobby-3d-assets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-character:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout development branch
+        uses: actions/checkout@v4
+
+      - name: Install Blender and Python
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender python3
+          blender --version
+          python3 --version
+
+      - name: Generate 1,000 outfit combinations
+        run: python3 scripts/generate_outfits.py
+
+      - name: Generate 1,000 composable animation patterns
+        run: python3 blender/generate_animations.py
+
+      - name: Build rigged BOBBY GLB
+        run: blender --background --python blender/build_bobby.py
+
+      - name: Validate generated assets
+        run: |
+          python3 - <<'PY'
+          import json, struct
+          from pathlib import Path
+          outfits = json.loads(Path("app/src/main/assets/outfits_1000.json").read_text())
+          patterns = json.loads(Path("app/src/main/assets/animation_patterns_1000.json").read_text())
+          glb = Path("app/src/main/assets/models/bobby_rigged.glb")
+          assert outfits["count"] == 1000 and len(outfits["looks"]) == 1000
+          assert patterns["count"] == 1000 and len(patterns["patterns"]) == 1000
+          data = glb.read_bytes()
+          assert data[:4] == b"glTF", "Not a valid GLB file"
+          version, declared_length = struct.unpack_from("<II", data, 4)
+          assert version == 2 and declared_length == len(data), "Invalid GLB header/length"
+          assert len(data) < 5 * 1024 * 1024, f"GLB exceeds 5 MB: {len(data)} bytes"
+          print(f"Looks: {len(outfits['looks'])}; animation patterns: {len(patterns['patterns'])}; GLB: {len(data)} bytes")
+          PY
+
+      - name: Upload generated BOBBY 3D assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: bobby-3d-assets
+          path: |
+            app/src/main/assets/outfits_1000.json
+            app/src/main/assets/animation_patterns_1000.json
+            app/src/main/assets/models/bobby_rigged.glb
+          if-no-files-found: error
+          retention-days: 30
