@@ -302,6 +302,7 @@ private fun BobbyHome(
         }
     }
     var voiceCloneOpen by remember { mutableStateOf(false) }
+    var dexterOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
     var webQuery by remember { mutableStateOf("") }
@@ -706,6 +707,7 @@ private fun BobbyHome(
                         TextButton(onClick = { updateOpen = true; updateStatus = "Ready to check GitHub releases."; pendingUpdate = null }) { Text("APK UPDATES", color = Neon) }
                         TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
                         TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
+                        TextButton(onClick = { dexterOpen = true }) { Text("DEXTER FINANCIAL RESEARCH", color = Neon) }
                         TextButton(onClick = { creativeStudioOpen = true }) { Text("CREATIVE STUDIO", color = Neon) }
                         TextButton(onClick = { robot3dOpen = true }) { Text("3D ROBOT", color = Neon) }
                         TextButton(onClick = { voiceCloneOpen = true }) { Text("CUSTOM BOBBY VOICE", color = Neon) }
@@ -1337,6 +1339,15 @@ private fun BobbyHome(
                 }
                 if (robot3dOpen) {
                     BobbyRobot3DDialog(onDismiss = { robot3dOpen = false })
+                }
+                if (dexterOpen) {
+                    BobbyDexterResearchDialog(
+                        onDismiss = { dexterOpen = false },
+                        onAnalyse = { prompt ->
+                            dexterOpen = false
+                            send(prompt)
+                        }
+                    )
                 }
                 if (voiceCloneOpen) {
                     BobbyVoiceCloneDialog(onDismiss = { voiceCloneOpen = false }, onPreview = onSpeak)
