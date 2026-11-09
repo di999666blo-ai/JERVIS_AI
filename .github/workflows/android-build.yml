@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BOBBY_VERSION_CODE: ${{ github.run_number }}
+      BOBBY_SIGNING_ENABLED: ${{ secrets.BOBBY_KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -27,7 +28,7 @@ jobs:
         with:
           gradle-version: '8.13'
       - name: Configure persistent signing key (optional but required for in-place upgrades)
-        if: ${{ secrets.BOBBY_KEYSTORE_BASE64 != '' }}
+        if: ${{ env.BOBBY_SIGNING_ENABLED == 'true' }}
         env:
           KEYSTORE_BASE64: ${{ secrets.BOBBY_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.BOBBY_KEYSTORE_PASSWORD }}
