@@ -5,6 +5,17 @@ plugins {
 }
 
 android {
+    val releaseStorePath = System.getenv("BOBBY_KEYSTORE_PATH")
+    signingConfigs {
+        if (!releaseStorePath.isNullOrBlank()) {
+            create("bobbyRelease") {
+                storeFile = file(releaseStorePath)
+                storePassword = System.getenv("BOBBY_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("BOBBY_KEY_ALIAS")
+                keyPassword = System.getenv("BOBBY_KEY_PASSWORD")
+            }
+        }
+    }
     namespace = "ai.diablo.bobby"
     compileSdk = 35
 
@@ -16,6 +27,9 @@ android {
         versionName = "0.1.0"
     }
 
+    buildTypes.getByName("debug") {
+        if (!releaseStorePath.isNullOrBlank()) signingConfig = signingConfigs.getByName("bobbyRelease")
+    }
     buildFeatures { compose = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
