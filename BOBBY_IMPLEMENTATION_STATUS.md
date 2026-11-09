@@ -168,3 +168,13 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - No provider key is bundled. API key storage is encrypted on the phone.
 - Source commits: voice clone UI/connector `ce7a23fddc1c49a16ff054b2f264da0ba499b7bc`, neural speech routing `104951c6d16cd665e1eb4777c23c0417a7e34b03`, dashboard entry `ebbef4c46663cfbdbb56a4ee9f9f7c4a95c7262f`.
 - Build, live API calls and physical Android-device verification are still pending. Do not treat this feature as tested until the APK is built and exercised with a valid provider key and permitted audio sample.
+
+
+## 2026-11-09 — BOBBY 3D avatar, screen vision and startup loading screen (build/device verification pending)
+- Added an original full-body BOBBY robot avatar as a real interactive 3D scene, built from 3D geometry with dark metallic armor, crimson emissive details, illuminated eyes, headphones and a crown-like headpiece. It is accessible from the dashboard's **3D ROBOT** button.
+- The built-in avatar does not require a Meshy subscription or a separate APK. The WebView downloads the Three.js renderer from jsDelivr at runtime, so an internet connection is required for the first render.
+- The Creative Studio 3D workflow now includes a ready-made BOBBY robot design prompt, Meshy generation and an interactive GLB preview. Meshy is optional and still subject to its own API access and credits.
+- Added an animated black/crimson BOBBY startup screen with pulsing robot emblem and progress indicator; it displays briefly while the app initializes.
+- Screen capture was already implemented and is retained: the **SEE MY SCREEN** control requests Android MediaProjection consent, captures one screen frame, then passes it to the configured vision-capable AI model for analysis. It is user-authorized, not hidden or continuous capture. Image analysis requires an AI provider/model that supports vision.
+- Source commits include: 3D GLB preview `810a479d85fca9fde0887b1da735bd46de4c87b1`, BOBBY 3D preset `4a80820d4063e40c2a3fc009be92acc2ea8f3187`, startup wiring `265dbfce1ee8a11b8ffd7cff2a81b20de1cafa18`, startup screen `306e97cf0b151f0d4f0dcdf60871e293b777a11f`, original interactive robot scene `e73d83f79fb334e262443e107732b329a5202542`, dashboard button `a07196dcb82c90738e40ea79bac6902a5e87c3d6`.
+- APK compilation and physical-device testing remain pending. Do not claim the new screens are working on-device until a successful Actions build and installation test are confirmed.
