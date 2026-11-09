@@ -249,6 +249,7 @@ private fun BobbyHome(
     var pluginsOpen by remember { mutableStateOf(false) }
     var offlineOpen by remember { mutableStateOf(false) }
     var webResearchOpen by remember { mutableStateOf(false) }
+    var creativeStudioOpen by remember { mutableStateOf(false) }
     var webQuery by remember { mutableStateOf("") }
     var webKeyDraft by remember { mutableStateOf("") }
     var webStatus by remember { mutableStateOf("Brave Search is not connected.") }
@@ -529,6 +530,7 @@ private fun BobbyHome(
                         TextButton(onClick = { updateOpen = true; updateStatus = "Ready to check GitHub releases."; pendingUpdate = null }) { Text("APK UPDATES", color = Neon) }
                         TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
                         TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
+                        TextButton(onClick = { creativeStudioOpen = true }) { Text("CREATIVE STUDIO", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
                         TextButton(onClick = { screenCaptureLauncher.launch((appContext.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }) { Text("SEE MY SCREEN", color = Neon) }
                         TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
@@ -1096,6 +1098,9 @@ private fun BobbyHome(
                         },
                         dismissButton = { TextButton(onClick = { updateOpen = false }) { Text("CLOSE") } }
                     )
+                }
+                if (creativeStudioOpen) {
+                    BobbyCreativeStudioDialog(onDismiss = { creativeStudioOpen = false }, openAiApiKey = BobbyConfigStore(appContext).apiKey())
                 }
                 if (settingsOpen) {
                     AlertDialog(
