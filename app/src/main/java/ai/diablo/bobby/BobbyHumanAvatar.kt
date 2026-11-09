@@ -20,7 +20,8 @@ import androidx.compose.ui.unit.dp
 data class BobbyAvatarLook(
     val expression: Int = 0, val outfit: Int = 0, val hair: Int = 0,
     val autoChangeHours: Int = 24, val autoChangeEnabled: Boolean = true,
-    val lastChangeMillis: Long = 0L
+    val lastChangeMillis: Long = 0L,
+    val bustSize: Int = 4
 )
 
 /** 10 tops x 10 bottoms x 10 shoe styles/colours = 1,000 procedural outfit combinations. */
@@ -29,11 +30,11 @@ class BobbyAvatarStore(context: Context) {
     fun load() = BobbyAvatarLook(
         prefs.getInt("expression", 0).coerceIn(0,99), prefs.getInt("outfit",0).coerceIn(0,999),
         prefs.getInt("hair",0).coerceIn(0,9), prefs.getInt("hours",24).coerceIn(1,168),
-        prefs.getBoolean("auto",true), prefs.getLong("last",0L))
+        prefs.getBoolean("auto",true), prefs.getLong("last",0L), prefs.getInt("bustSize",4).coerceIn(1,10))
     fun save(v: BobbyAvatarLook) {
         prefs.edit().putInt("expression",v.expression.coerceIn(0,99)).putInt("outfit",v.outfit.coerceIn(0,999))
             .putInt("hair",v.hair.coerceIn(0,9)).putInt("hours",v.autoChangeHours.coerceIn(1,168))
-            .putBoolean("auto",v.autoChangeEnabled).putLong("last",v.lastChangeMillis).apply()
+            .putBoolean("auto",v.autoChangeEnabled).putLong("last",v.lastChangeMillis).putInt("bustSize",v.bustSize.coerceIn(1,10)).apply()
     }
 }
 
@@ -60,6 +61,8 @@ fun BobbyAvatarCustomizer(initial:BobbyAvatarLook,onSave:(BobbyAvatarLook)->Unit
             Slider(look.expression.toFloat(),{look=look.copy(expression=it.toInt())},valueRange=0f..99f)
             Text("Generated outfit: "+(look.outfit+1)+" / 1,000")
             Slider(look.outfit.toFloat(),{look=look.copy(outfit=it.toInt())},valueRange=0f..999f)
+            Text("Bust proportion: "+look.bustSize+" / 10")
+            Slider(look.bustSize.toFloat(),{look=look.copy(bustSize=it.toInt().coerceIn(1,10))},valueRange=1f..10f,steps=8)
             Text("Hair style / colour: "+(look.hair+1)+" / 10")
             Slider(look.hair.toFloat(),{look=look.copy(hair=it.toInt())},valueRange=0f..9f)
             Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
