@@ -16,7 +16,7 @@ class BobbyConfigStore(context: Context) {
     private val alias = "bobby_api_key_aes"
 
     fun endpoint(): String = prefs.getString("endpoint", "https://api.openai.com/v1") ?: "https://api.openai.com/v1"
-    fun model(): String = prefs.getString("model", "gpt-4o-mini") ?: "gpt-4o-mini"
+    fun model(): String = prefs.getString("model", "gpt-6.1-sol") ?: "gpt-6.1-sol"
     fun apiKey(): String = prefs.getString("api_key_encrypted", null)?.let { decrypt(it) }.orEmpty()
 
     fun save(endpoint: String, model: String, apiKey: String) {
