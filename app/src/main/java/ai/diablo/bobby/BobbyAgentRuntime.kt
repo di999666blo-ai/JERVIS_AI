@@ -37,7 +37,8 @@ class BobbyAgentRuntime(context: Context) {
         BobbyAgentTool("memory_write", "Save memory", "Save a memory only after the user confirms.", true),
         BobbyAgentTool("web_search", "Web research", "Uses a configured search provider; requires provider credentials.", false, false),
         BobbyAgentTool("github", "GitHub operations", "Requires a connected GitHub token and per-action confirmation.", true, false),
-        BobbyAgentTool("plugin_adapter", "Connected plugins", "Only real, connected adapters may execute; catalogue entries are not tools.", true, false)
+        BobbyAgentTool("plugin_adapter", "Connected plugins", "Only real, connected adapters may execute; catalogue entries are not tools.", true, false),
+        BobbyAgentTool("apk_update", "Update BOBBY", "Checks the official GitHub release, verifies the APK digest when available, and hands installation to Android for user approval.", true, true)
     )
 
     fun saveTask(request: String, status: String, result: String): BobbyAgentTask {
