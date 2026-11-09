@@ -1085,6 +1085,7 @@ private fun BobbyHome(
                                             when {
                                                 plugin.id == "github" && pluginStore.hasGitHubToken() -> "TOKEN SAVED SECURELY • API ACTIONS NOT YET WIRED"
                                                 plugin.id == "deriv" -> "ACCOUNT VERIFICATION ONLY • NO TRADING"
+                                                plugin.category == "Social" -> "SOCIAL PROVIDER LISTED • OAUTH/API ADAPTER + PROVIDER APPROVAL REQUIRED • NOT CONNECTED"
                                                 plugin.readiness == "FOUNDATION" -> "CREDENTIAL FOUNDATION ONLY • ADAPTER INCOMPLETE"
                                                 pluginStore.isEnabled(plugin.id) -> "SAVED TO YOUR LIST • PROVIDER ADAPTER NOT IMPLEMENTED"
                                                 else -> "CATALOGUE LISTING • NOT CONNECTED"
