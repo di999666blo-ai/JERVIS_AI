@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bobby_accessibility_description">Allows BOBBY to interact with visible app controls, scroll and perform gestures only after you explicitly enable this Android accessibility service.</string>
+</resources>
