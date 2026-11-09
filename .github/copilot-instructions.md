@@ -15,6 +15,15 @@ Read `AGENTS.md`, `BOBBY_MASTER_VISION.md`, and `BOBBY_IMPLEMENTATION_STATUS.md`
 - For trading, keep demo and live modes separate, default to safe/demo operation, provide risk controls and emergency stop, and never promise profits.
 - Respect phone constraints: older Android versions, limited RAM/storage, background execution limits and battery restrictions.
 
+## Specialist agent profiles
+- Android implementation: `.github/agents/android-engineer.agent.md`
+- Creative image/design work: `.github/agents/creative-studio.agent.md`
+- Real 3D asset work: `.github/agents/3d-asset-engineer.agent.md`
+- Security review: `.github/agents/security-reviewer.agent.md`
+- QA and verification: `.github/agents/qa-verifier.agent.md`
+
+For visual requests, select Creative Studio; for editable GLB/glTF, rigging or Android 3D rendering, select 3D Asset Engineer. Use both for combined character design-to-3D tasks. These are agent instruction profiles; their availability in GitHub Copilot's agent picker depends on the user's Copilot plan and repository feature enablement. Codex can also be explicitly instructed to follow the relevant profile.
+ 
 ## Engineering loop
 1. Inspect repository state and relevant code.
 2. State a concise plan and risks.
