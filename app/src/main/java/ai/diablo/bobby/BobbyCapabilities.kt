@@ -18,6 +18,7 @@ object BobbyCapabilityReport {
         BobbyCapabilityStatus("PDF/image/audio/video analysis", false, "Requires dedicated parsers or a compatible multimodal provider; not yet connected."),
         BobbyCapabilityStatus("Web research and browser automation", false, "Not yet implemented."),
         BobbyCapabilityStatus("Trading", false, "No broker adapter or order execution is enabled; demo risk guard only."),
-        BobbyCapabilityStatus("Plugins and offline local LLM", false, "Architecture planned; runtime manager/local model not yet implemented.")
+        BobbyCapabilityStatus("ECC-inspired agent planner", true, "In-app task planning, registered-tool inventory and local task history are available; automatic tool execution and remote Codex/ECC execution are not connected."),
+        BobbyCapabilityStatus("Plugins and offline local LLM", false, "Plugin catalogue and offline model foundations exist; most adapters are not connected and local inference requires device verification.")
     )
 }
