@@ -286,6 +286,15 @@ private fun BobbyHome(
         val clean = text.trim()
         if (clean.isEmpty()) return
         val lower = clean.lowercase(Locale.ROOT)
+        if (listOf("update yourself", "update bobby", "check for updates", "update the apk", "install bobby update").any { lower.contains(it) }) {
+            chat.add(ChatLine(false, clean))
+            chat.add(ChatLine(true, "Opening BOBBY's secure update manager. I'll check the published APK and ask Android to confirm installation."))
+            updateOpen = true
+            updateStatus = "Ready to check GitHub releases."
+            pendingUpdate = null
+            onSpeak("Opening my update manager.")
+            return
+        }
         val reminder = Regex("""(?i)\bremind me in\s+(\d+)\s*(minutes?|mins?|hours?|hrs?|days?)\s*(?:to|about)?\s+(.+)$""").find(clean)
         if (reminder != null) {
             runCatching {
