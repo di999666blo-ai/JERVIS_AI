@@ -123,7 +123,7 @@ class BobbyPluginStore(context: Context) {
         BobbyPluginDescriptor("hugging_face","Hugging Face","Model and inference endpoints.","AI Models"),
         BobbyPluginDescriptor("replicate","Replicate","Hosted model execution.","AI Models"),
         BobbyPluginDescriptor("perplexity","Perplexity","AI search and answer API.","AI Models"),
-        BobbyPluginDescriptor("elevenlabs","ElevenLabs","Speech synthesis and voice APIs.","AI Models"),
+        BobbyPluginDescriptor("elevenlabs","ElevenLabs","BOBBY custom voice cloning and text-to-speech adapter; user API key and provider credits/limits required.","AI Models","ElevenLabs API key","READY"),
         BobbyPluginDescriptor("deepgram","Deepgram","Speech recognition and audio APIs.","AI Models"),
         BobbyPluginDescriptor("assemblyai","AssemblyAI","Audio transcription and understanding.","AI Models"),
         BobbyPluginDescriptor("aws","Amazon Web Services","AWS service workflows through scoped credentials.","Developer"),
