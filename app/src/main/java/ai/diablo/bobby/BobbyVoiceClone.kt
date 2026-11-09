@@ -2,6 +2,9 @@ package ai.diablo.bobby
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 
 import android.content.Context
@@ -143,7 +146,7 @@ fun BobbyVoiceCloneDialog(onDismiss: () -> Unit, onPreview: (String) -> Unit) {
                     visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
                     singleLine = true, modifier = androidx.compose.ui.Modifier.fillMaxWidth()
                 )
-                androidx.compose.material3.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
+                androidx.compose.foundation.layout.Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
                     androidx.compose.material3.TextButton(onClick = {
                         runCatching { connector.saveApiKey(apiKey); apiKey = ""; status = "API key encrypted and saved on this phone." }
                             .onFailure { status = it.message ?: "Could not save API key." }
