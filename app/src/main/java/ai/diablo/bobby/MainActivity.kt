@@ -250,6 +250,7 @@ private fun BobbyHome(
     var offlineOpen by remember { mutableStateOf(false) }
     var webResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
+    var voiceCloneOpen by remember { mutableStateOf(false) }
     var webQuery by remember { mutableStateOf("") }
     var webKeyDraft by remember { mutableStateOf("") }
     var webStatus by remember { mutableStateOf("Brave Search is not connected.") }
@@ -531,6 +532,7 @@ private fun BobbyHome(
                         TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
                         TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
                         TextButton(onClick = { creativeStudioOpen = true }) { Text("CREATIVE STUDIO", color = Neon) }
+                        TextButton(onClick = { voiceCloneOpen = true }) { Text("CUSTOM BOBBY VOICE", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
                         TextButton(onClick = { screenCaptureLauncher.launch((appContext.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }) { Text("SEE MY SCREEN", color = Neon) }
                         TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
@@ -1101,6 +1103,9 @@ private fun BobbyHome(
                 }
                 if (creativeStudioOpen) {
                     BobbyCreativeStudioDialog(onDismiss = { creativeStudioOpen = false }, openAiApiKey = BobbyConfigStore(appContext).apiKey())
+                }
+                if (voiceCloneOpen) {
+                    BobbyVoiceCloneDialog(onDismiss = { voiceCloneOpen = false }, onPreview = onSpeak)
                 }
                 if (settingsOpen) {
                     AlertDialog(
