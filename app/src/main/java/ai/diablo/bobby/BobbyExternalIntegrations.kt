@@ -9,6 +9,9 @@ import java.net.URL
 import java.net.URLEncoder
 import java.util.concurrent.Executors
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 data class BobbyExternalStatus(val provider: String, val detail: String)
 
