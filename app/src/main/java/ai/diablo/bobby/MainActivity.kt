@@ -233,6 +233,7 @@ private fun BobbyHome(
     }
     LaunchedEffect(activeMode, chat.size) { modeStore.saveHistory(activeMode, chat.toList()) }
     val memoryStore = remember { BobbyMemoryStore(appContext) }
+    val socialCompanion = remember { BobbySocialCompanion(appContext) }
     val profileStore = remember { BobbyProfileStore(appContext) }
     var profile by remember { mutableStateOf(profileStore.load()) }
     var onboardingOpen by remember { mutableStateOf(profile == null) }
