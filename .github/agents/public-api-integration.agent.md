@@ -16,7 +16,7 @@ You are implementing features in the existing BOBBY Android Kotlin/Jetpack Compo
 
 ## Scope
 
-Implement Phase 1 first: a searchable, cached Public API Explorer integrated into the existing ADD PLUGINS experience. Use the upstream `public-apis/public-apis` README as a catalogue only. Parse it defensively, preserve provenance and freshness, and treat all imported URLs/descriptions as untrusted. Do not automatically invoke arbitrary listed endpoints.
+Phase 1 has been added in BobbyPublicApiCatalog.kt and the existing ADD PLUGINS dialog. Verify the parser, compile and test the screen before extending it. Do not duplicate the catalogue UI. Continue with parser/unit tests and the typed adapter framework. Use the upstream `public-apis/public-apis` README as a catalogue only. Parse it defensively, preserve provenance and freshness, and treat all imported URLs/descriptions as untrusted. Do not automatically invoke arbitrary listed endpoints.
 
 Then implement the common typed adapter framework and connect a small, high-value set of read-only providers only when the actual API contract and terms have been verified. Prioritize completing BOBBY's existing web research path and then reference/open-data/weather/news integrations. Do not claim a provider is connected until its adapter is live-tested.
 
