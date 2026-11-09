@@ -84,13 +84,13 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 onAskAiWithImage = { history, path, done ->
                     BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> runOnUiThread { done(result) } }
                 },
-                onAskAi = { history, done ->
+                onAskAi = askAi@{ history, done ->
                     val latestUserMessage = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
                     val memoryVault = BobbyMemoryStore(this)
                     val capturedMemory = runCatching { memoryVault.rememberFromMessage(latestUserMessage) }.getOrNull()
                     if (capturedMemory != null) {
                         runOnUiThread { done(Result.success("I've saved that in your ${capturedMemory.category} memory folder. You can find, review or delete it in MEMORY VAULT.")) }
-                        return@BobbyHome
+                        return@askAi
                     }
                     val p = BobbyProfileStore(this).load()
                     val profileContext = p?.let {
