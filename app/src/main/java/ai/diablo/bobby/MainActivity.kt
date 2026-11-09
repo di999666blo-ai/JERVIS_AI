@@ -251,6 +251,8 @@ private fun BobbyHome(
     var webResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
     var voiceCloneOpen by remember { mutableStateOf(false) }
+    var showStartup by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
     var webQuery by remember { mutableStateOf("") }
     var webKeyDraft by remember { mutableStateOf("") }
     var webStatus by remember { mutableStateOf("Brave Search is not connected.") }
@@ -513,6 +515,7 @@ private fun BobbyHome(
 
     MaterialTheme(colorScheme = darkColorScheme(background = Void, surface = Panel, primary = Neon, onBackground = Color.White, onSurface = Color.White)) {
         Surface(Modifier.fillMaxSize(), color = Void) {
+            Box(Modifier.fillMaxSize()) {
             Column(
                 Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF280A16), Void, Void))).padding(horizontal = 18.dp, vertical = 14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -1137,6 +1140,8 @@ private fun BobbyHome(
                         }
                     )
                 }
+            }
+            if (showStartup) BobbyStartupScreen()
             }
         }
     }
