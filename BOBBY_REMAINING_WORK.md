@@ -93,3 +93,41 @@ Do not merge to master without the owner's approval.
 6. Floating bubble offers tap-to-talk and visibly reflects listening/thinking/speaking/working states.
 7. Recorder, screen reading and call features disclose their limits and permissions.
 8. CI is green, APK asset verified, signing strategy documented, and no feature is labelled complete solely because it compiles.
+
+
+## Implementation update — 9 November 2026
+
+### Committed code changes
+- `732e51f` — Added the opt-in accessibility service.
+- `8ae8c8b` / `35849a6` / `51350c6` — Added its XML configuration, disclosure string and manifest registration.
+- `a1cbb4b` — Added guest session storage and social conversation context.
+- `78d7aa3` — Added voice/text command routing for guest introductions, visible-control taps, text entry, scrolling, Back/Home and chess app launch.
+- `ca0bd97` / `b384b2e` — Added accessible screen-text extraction and the “read my screen” command.
+- `191bf98` / `81968a6` / `cd486ab` — Added guest entertainment choice handling, chess consent handoff and corrected Compose session scope.
+- `200c37b` / `f71123e` / `8f353ce` — Changed the floating robot tap to launch BOBBY voice recognition and routed the intent back to an existing singleTop activity.
+- `f119b87` / `5ee2acd` — Removed the empty package filter from accessibility configuration and added a connection-status/limitations note to Permission Centre.
+
+### CI verification
+- 🟢 Build #180 succeeded for the initial accessibility service registration.
+- 🟢 Build #187 succeeded after the guest session scope fix.
+- 🟢 Build #190 succeeded for the floating-bubble-to-voice integration at commit `8f353cef79b529a3a14d64dc3e2b8f192d7f09dc`.
+- 🔴 Build #186 failed because the Compose guest-session variable was not in scope; corrected in `cd486ab`, and build #187 then passed.
+- 🟡 The two latest small changes (`f119b87`, `5ee2acd`) and this document update still need their own final CI run.
+
+### What works in code now (not phone-tested)
+- The owner can introduce a guest with a phrase like “Meet my friend Ahmed”. BOBBY saves the guest's display name for the current social session and asks the AI to greet them naturally.
+- “Bobby, entertain Ahmed” asks whether Ahmed would like chess. A clear yes within two minutes attempts to open an installed chess app; no offers other activities.
+- “Bobby, tap [visible label]”, “type [text] into [field]”, “scroll down/up”, “go back”, “go home” and “read my screen” route to the opt-in accessibility service.
+- Tapping the floating robot now launches Android speech recognition for BOBBY, instead of only opening the dashboard.
+- The accessibility service reads visible accessible labels/text locally when explicitly asked; the text is not automatically sent to the AI provider by this command.
+
+### Remaining gaps
+- The floating bubble still opens the main BOBBY activity, not a separate compact conversation overlay.
+- The floating robot still needs distinct listening/thinking/speaking/working/error animation states.
+- Voice identity separation for multiple people is not implemented. BOBBY does not yet reliably know which person is speaking.
+- Guest conversation relies on the configured AI provider for rich dialogue; the offline/basic fallback is limited.
+- Chess is only launched if an installed chess app is found. Bobby does not yet play the game autonomously, track legal moves or provide a built-in chess board.
+- A guest's “yes” is interpreted as chess consent only while the short-lived chess offer is pending; it is not full multi-speaker consent detection.
+- Accessibility actions are text/label based. Coordinate gesture APIs exist in the service but are not yet exposed as natural-language commands.
+- Sensitive action labels are blocked by the current simple keyword guard. This is not a substitute for a complete confirmation framework.
+- No always-on wake word, full-duplex conversation, call audio injection or universal control of third-party apps is implemented.
