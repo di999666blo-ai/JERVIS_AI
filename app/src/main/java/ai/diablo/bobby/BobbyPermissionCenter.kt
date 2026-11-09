@@ -65,6 +65,11 @@ fun BobbyPermissionCenter(onDismiss: () -> Unit) {
                 OutlinedButton(onClick = { openAccessibilitySettings(context) }, modifier = Modifier.fillMaxWidth()) {
                     Text("ACCESSIBILITY SERVICE (MANUAL)")
                 }
+                Text(
+                    if (BobbyAccessibilityController.isEnabledAndConnected()) "PHONE INTERACTION: CONNECTED" else "PHONE INTERACTION: NOT CONNECTED",
+                    color = if (BobbyAccessibilityController.isEnabledAndConnected()) androidx.compose.ui.graphics.Color(0xFF8BC34A) else androidx.compose.ui.graphics.Color(0xFFFFB74D)
+                )
+                Text("When enabled, Bobby can operate many visible app controls, enter text in supported fields, scroll and read accessible screen text. Some games and protected screens are not controllable. You remain responsible for sensitive actions.")
                 OutlinedButton(onClick = { openBatterySettings(context) }, modifier = Modifier.fillMaxWidth()) {
                     Text("BATTERY / BACKGROUND ACTIVITY")
                 }
