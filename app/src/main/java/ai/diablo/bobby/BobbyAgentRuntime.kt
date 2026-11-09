@@ -35,7 +35,7 @@ class BobbyAgentRuntime(context: Context) {
         BobbyAgentTool("android_compose_sms", "Compose message", "Open the user's messaging app with a draft; never send silently."),
         BobbyAgentTool("memory_read", "Read saved memory", "Read user-approved local BOBBY memories.", false),
         BobbyAgentTool("memory_write", "Save memory", "Save a memory only after the user confirms.", true),
-        BobbyAgentTool("public_api_catalog", "Search public API directory", "Search cached public API metadata and open provider documentation; does not execute listed APIs.", false, true),
+        BobbyAgentTool("public_api_catalog", "Search public API directory", "Catalogue UI is implemented; planner-to-catalogue execution is not yet wired.", false, false),
         BobbyAgentTool("web_search", "Web research", "Uses a configured search provider; requires provider credentials.", false, false),
         BobbyAgentTool("github", "GitHub operations", "Requires a connected GitHub token and per-action confirmation.", true, false),
         BobbyAgentTool("plugin_adapter", "Connected plugins", "Only real, connected adapters may execute; catalogue entries are not tools.", true, false),
