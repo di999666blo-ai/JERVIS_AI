@@ -270,6 +270,9 @@ private fun BobbyHome(
     val updateManager = remember { BobbyUpdateManager(appContext) }
     val agentRuntime = remember { BobbyAgentRuntime(appContext) }
     var agentHistory by remember { mutableStateOf(agentRuntime.recentTasks()) }
+    val executionEngine = remember { BobbyTaskExecutionEngine(appContext) }
+    var executionPreview by remember { mutableStateOf<BobbyExecutionPreview?>(null) }
+    var executionStatus by remember { mutableStateOf("") }
     var permissionsOpen by remember { mutableStateOf(false) }
     var derivOpen by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
@@ -1213,11 +1216,46 @@ private fun BobbyHome(
                                 }
                                 if (agentBusy) { CircularProgressIndicator(color = Neon); Text("BOBBY is preparing the task plan…") }
                                 if (agentPlan.isNotBlank()) { Text("TASK PLAN", color = Neon); Text(agentPlan, color = Color.White, style = MaterialTheme.typography.bodySmall) }
+                                Text("EXECUTION ENGINE", color = Neon)
+                                Text("Supported commands: open app <name> • set alarm HH:mm [label]. Preparing is safe; execution requires your separate approval.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                executionStatus.takeIf { it.isNotBlank() }?.let { Text(it, color = Color.LightGray, style = MaterialTheme.typography.bodySmall) }
+                                executionPreview?.let { preview ->
+                                    Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(8.dp)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("APPROVAL REQUIRED • ${preview.title}", color = Neon)
+                                        Text(preview.detail, color = Color.White, style = MaterialTheme.typography.bodySmall)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Button(onClick = {
+                                                val result = executionEngine.executeApproved(preview.id)
+                                                executionStatus = result.message
+                                                executionPreview = null
+                                                agentHistory = agentRuntime.recentTasks()
+                                            }) { Text("APPROVE & EXECUTE") }
+                                            TextButton(onClick = {
+                                                executionEngine.reject(preview.id)
+                                                executionPreview = null
+                                                executionStatus = "Action rejected. Nothing was launched."
+                                                agentHistory = agentRuntime.recentTasks()
+                                            }) { Text("REJECT", color = Neon) }
+                                        }
+                                    }
+                                }
                                 Text("RECENT TASKS (" + agentHistory.size + ")", color = Neon)
                                 agentHistory.take(5).forEach { task -> Text(task.status + " • " + task.request.take(90), color = Color.LightGray, style = MaterialTheme.typography.bodySmall) }
                             }
                         },
                         confirmButton = {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(enabled = agentRequest.isNotBlank(), onClick = {
+                                val prepared = executionEngine.prepare(agentRequest)
+                                prepared.onSuccess {
+                                    executionPreview = it
+                                    executionStatus = "Review the action details. Nothing has happened yet."
+                                }.onFailure {
+                                    executionPreview = null
+                                    executionStatus = it.message ?: "This command is not supported by the execution engine."
+                                }
+                                agentHistory = agentRuntime.recentTasks()
+                            }) { Text("PREPARE ACTION", color = Neon) }
                             TextButton(enabled = !agentBusy && agentRequest.isNotBlank() && aiEnabled, onClick = {
                                 agentBusy = true
                                 agentPlan = ""
@@ -1231,6 +1269,7 @@ private fun BobbyHome(
                                     }
                                 }
                             }) { Text("PLAN TASK", color = Neon) }
+                            }
                         },
                         dismissButton = {
                             Row {
