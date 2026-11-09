@@ -98,9 +98,10 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         val skin = 0xFFE9B99E.toInt()
         val bustScale = 0.78f + current.bustSize.coerceIn(1,10) * 0.075f
         val outfitStyle = (current.outfit / 10) % 5
-        // Legs and shoes
-        part(-0.25f,0.72f,0f,0.17f,0.58f,0.19f,lower,bob)
-        part(0.25f,0.72f,0f,0.17f,0.58f,0.19f,lower,bob)
+        // Procedural idle/walk-in-place leg articulation (low-cost ES 2.0).
+        val legSwing = if (active) sin(t * 3.2f) * 10f else sin(t * 1.1f) * 1.8f
+        part(-0.25f,0.72f,0f,0.17f,0.58f,0.19f,lower,bob,legSwing)
+        part(0.25f,0.72f,0f,0.17f,0.58f,0.19f,lower,bob,-legSwing)
         // A separate lower-garment layer changes silhouette by generated style.
         if (outfitStyle % 2 == 0) {
             part(0f,1.02f,0.012f,0.43f,0.25f,0.255f,lower,bob)
@@ -129,6 +130,12 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         }
         // Subtle fitted-waist panel keeps the silhouette readable in 3D.
         part(0f,1.27f + bob,0.012f,0.325f,0.22f,0.235f,top,0f,sway)
+        // Small animated side panels add a restrained cloth-like secondary motion.
+        val clothFlutter = sin(t * 2.6f + 0.7f) * 4.5f
+        if (outfitStyle == 0 || outfitStyle == 2 || outfitStyle == 4) {
+            part(-0.31f,1.04f + bob,0.12f,0.075f,0.22f,0.055f,lower,0f,-clothFlutter)
+            part(0.31f,1.04f + bob,0.12f,0.075f,0.22f,0.055f,lower,0f,clothFlutter)
+        }
         part(0f,2.13f + bob,0f,0.13f,0.18f,0.13f,skin)
         // Head, ears and hair cap
         part(0f,2.52f + bob,0f,0.36f,0.43f,0.31f,skin,0f,sway)
@@ -137,29 +144,35 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         part(0f,2.82f + bob,-0.01f,0.37f,0.18f,0.33f,hair,0f,sway)
         // Long hair panels and a soft fringe; hair style selection changes length and fringe.
         val hairLength = 0.38f + (current.hair % 5) * 0.12f
-        part(-0.29f,2.28f - hairLength*0.34f + bob,-0.19f,0.105f,hairLength,0.12f,hair,0f,-0.04f)
-        part(0.29f,2.28f - hairLength*0.34f + bob,-0.19f,0.105f,hairLength,0.12f,hair,0f,0.04f)
+        val hairSway = sin(t * 2.1f) * 3.2f
+        part(-0.29f,2.28f - hairLength*0.34f + bob,-0.19f,0.105f,hairLength,0.12f,hair,0f,-0.04f + hairSway)
+        part(0.29f,2.28f - hairLength*0.34f + bob,-0.19f,0.105f,hairLength,0.12f,hair,0f,0.04f + hairSway)
         part(-0.13f,2.69f + bob,0.235f,0.16f,0.105f,0.105f,hair,0f,-12f)
         part(0.08f,2.68f + bob,0.245f,0.15f,0.09f,0.105f,hair,0f,9f)
         // Face details: eye whites, irises, pupils, brows, nose and lips.
-        val blink = if (t % 4.1f < 0.13f) 0.22f else 1f
+        val expression = current.expression.coerceIn(0, 99)
+        val expressionPhase = expression / 99f
+        val blink = if (t % 4.1f < 0.13f || (expression % 17 == 0 && t % 2.7f < 0.18f)) 0.18f else 1f
+        val eyeOpen = (0.72f + ((expression * 7 % 29) / 100f)).coerceIn(0.72f, 1f)
+        val eyeHeight = 0.038f * blink * eyeOpen
         val eyeWhite = 0xFFFFF5EC.toInt()
         val iris = intArrayOf(0xFF397C78.toInt(),0xFF5B4636.toInt(),0xFF405D91.toInt(),0xFF292929.toInt())[current.hair % 4]
-        part(-0.135f,2.555f + bob,0.294f,0.078f,0.038f*blink,0.022f,eyeWhite)
-        part(0.135f,2.555f + bob,0.294f,0.078f,0.038f*blink,0.022f,eyeWhite)
+        part(-0.135f,2.555f + bob,0.294f,0.078f,eyeHeight,0.022f,eyeWhite)
+        part(0.135f,2.555f + bob,0.294f,0.078f,eyeHeight,0.022f,eyeWhite)
         part(-0.135f,2.555f + bob,0.316f,0.027f,0.031f*blink,0.012f,iris)
         part(0.135f,2.555f + bob,0.316f,0.027f,0.031f*blink,0.012f,iris)
         part(-0.135f,2.555f + bob,0.328f,0.012f,0.022f*blink,0.008f,0xFF171313.toInt())
         part(0.135f,2.555f + bob,0.328f,0.012f,0.022f*blink,0.008f,0xFF171313.toInt())
-        part(-0.135f,2.62f + bob,0.292f,0.082f,0.018f,0.018f,hair,0f,-5f)
-        part(0.135f,2.62f + bob,0.292f,0.082f,0.018f,0.018f,hair,0f,5f)
+        val browTilt = ((expression % 9) - 4) * 2.1f
+        part(-0.135f,2.62f + bob,0.292f,0.082f,0.018f,0.018f,hair,0f,-5f + browTilt)
+        part(0.135f,2.62f + bob,0.292f,0.082f,0.018f,0.018f,hair,0f,5f - browTilt)
         part(0f,2.47f + bob,0.302f,0.045f,0.075f,0.035f,0xFFD99F86.toInt())
         part(0f,2.425f + bob,0.327f,0.045f,0.025f,0.025f,0xFFC78370.toInt())
-        val expression = current.expression
-        val mouthY = 2.355f + bob + ((expression % 9) - 4) * 0.004f
-        val mouthWidth = if (expression % 5 == 2) 0.035f else 0.075f
-        val mouthHeight = if (expression % 5 == 2) 0.035f else 0.014f
-        val lipColor = if (expression % 5 == 1) 0xFFB94E65.toInt() else 0xFF914653.toInt()
+        // 100 deterministic expression presets vary mouth shape, eye openness and brow angle.
+        val mouthY = 2.355f + bob + ((expression % 11) - 5) * 0.0035f
+        val mouthWidth = 0.042f + ((expression * 13 % 10) * 0.005f)
+        val mouthHeight = if (expression % 7 == 0) 0.032f else 0.009f + ((expression % 4) * 0.003f)
+        val lipColor = if (expression % 3 == 1) 0xFFB94E65.toInt() else 0xFF914653.toInt()
         part(0f,mouthY,0.309f,mouthWidth,mouthHeight,0.018f,lipColor)
         // Outfit finishing: collar, buttons, wrist cuffs and shoe heels.
         part(0f,1.91f + bob,0.19f,0.19f,0.045f,0.035f,lower)
