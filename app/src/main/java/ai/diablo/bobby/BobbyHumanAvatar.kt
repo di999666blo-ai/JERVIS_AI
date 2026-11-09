@@ -95,7 +95,7 @@ fun BobbyAvatarCustomizer(initial:BobbyAvatarLook,onSave:(BobbyAvatarLook)->Unit
             }
             Text("Change interval: "+look.autoChangeHours+" hour(s)")
             Slider(look.autoChangeHours.toFloat(),{look=look.copy(autoChangeHours=it.toInt().coerceIn(1,168))},valueRange=1f..168f,steps=166)
-            Text("Switch automatic changes off to keep one outfit. Scheduled changes are applied when BOBBY is next active; background scheduling is not yet installed.")
+            Text("Switch automatic changes off to keep one outfit. BOBBY schedules outfit changes in the background; Android battery restrictions may delay delivery.")
         }
     },confirmButton={TextButton(onClick={onSave(look);onClose()}){Text("SAVE LOOK",color=Color(0xFFFF1744))}},dismissButton={TextButton(onClick=onClose){Text("CANCEL")}})
 }
