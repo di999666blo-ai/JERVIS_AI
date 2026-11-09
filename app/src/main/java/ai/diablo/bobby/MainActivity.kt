@@ -52,12 +52,14 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
     private var selectedVoice: Voice? = null
     private lateinit var neuralVoice: BobbyNeuralVoice
     private lateinit var offlineAi: BobbyOfflineAi
+    private lateinit var socialCompanion: BobbySocialCompanion
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         tts = TextToSpeech(this, this)
         neuralVoice = BobbyNeuralVoice(this)
         offlineAi = BobbyOfflineAi(this)
+        socialCompanion = BobbySocialCompanion(this)
         setContent {
             val configStore = BobbyConfigStore(this)
             BobbyHome(
@@ -105,6 +107,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     }
                     val completeContext = listOf(
                         profileContext,
+                        socialCompanion.contextInstruction(),
                         if (savedMemoryContext.isNotBlank()) "User-approved saved memories (use only when relevant; do not treat as credentials):\n$savedMemoryContext" else ""
                     ).filter { it.isNotBlank() }.joinToString("\n\n")
                     val needsLiveResearch = Regex("(?i)\\b(latest|today|current|right now|breaking|news|price|weather|score|recent|this week|search the web|web search|research)\\b").containsMatchIn(userQuestion)
@@ -327,6 +330,29 @@ private fun BobbyHome(
         val clean = text.trim()
         if (clean.isEmpty()) return
         val lower = clean.lowercase(Locale.ROOT)
+        val introduction = Regex("""(?i)\b(?:meet|introduce)\s+(?:my\s+)?(?:friend|guest|buddy)?\s*([\p{L}][\p{L} .'-]{1,45})$""").find(clean)
+        if (introduction != null && listOf("meet", "introduce").any { lower.startsWith(it) }) {
+            val guestName = runCatching { socialCompanion.introduceGuest(introduction.groupValues[1]) }.getOrElse {
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, it.message ?: "I couldn't identify the guest's name.")); return
+            }
+            chat.add(ChatLine(false, clean))
+            chat.add(ChatLine(false, "Please greet $guestName and introduce yourself naturally. Ask how they are."))
+            state = "THINKING"
+            onAskAi(chat.toList()) { result ->
+                val reply = result.getOrElse { "Hello $guestName! Nice to meet you. I'm Bobby, an AI assistant. How are you doing?" }
+                chat.add(ChatLine(true, reply))
+                state = if (result.isSuccess) "SPEAKING" else "IDLE"
+                onSpeak(reply)
+                state = "IDLE"
+            }
+            return
+        }
+        if (listOf("end guest session", "goodbye guest", "forget guest").any { lower.contains(it) }) {
+            socialCompanion.endGuestSession()
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "Guest session ended. I won't assume anyone else is still here."))
+            onSpeak("Guest session ended.")
+            return
+        }
         if (listOf("update yourself", "update bobby", "check for updates", "update the apk", "install bobby update").any { lower.contains(it) }) {
             chat.add(ChatLine(false, clean))
             chat.add(ChatLine(true, "Opening BOBBY's secure update manager. I'll check the published APK and ask Android to confirm installation."))
@@ -376,6 +402,55 @@ private fun BobbyHome(
             }.onFailure { error ->
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't set that alarm: " + (error.message ?: "unknown error"))); onSpeak("I couldn't set that alarm."); return
             }
+        }
+        val accessibilityCommand = Regex("""(?i)^\s*(?:bobby[, ]+)?(click|tap)\s+(.{1,60})$""").find(clean)
+        if (accessibilityCommand != null) {
+            val target = accessibilityCommand.groupValues[2].trim().trim('"', '\'')
+            val risky = Regex("""(?i)\b(pay|payment|buy|purchase|transfer|withdraw|send|delete|remove|confirm|trade|place order|subscribe)\b""").containsMatchIn(target)
+            val reply = when {
+                risky -> "I won't activate a payment, purchase, message-send, deletion, trade or other consequential control through an ambiguous tap command. Please review that action directly in the app."
+                !BobbyAccessibilityController.isEnabledAndConnected() -> "Phone interaction isn't enabled yet. Turn on BOBBY phone interaction in Android Accessibility settings first."
+                BobbyAccessibilityController.clickText(target) -> "I tapped the visible control labelled $target."
+                else -> "I couldn't find a tappable visible control matching $target on this screen."
+            }
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
+        val typeCommand = Regex("""(?i)^\s*(?:bobby[, ]+)?type\s+(.{1,300})\s+into\s+(.{1,80})$""").find(clean)
+        if (typeCommand != null) {
+            val value = typeCommand.groupValues[1].trim().trim('"', '\'')
+            val field = typeCommand.groupValues[2].trim()
+            val reply = when {
+                !BobbyAccessibilityController.isEnabledAndConnected() -> "Phone interaction isn't enabled yet. Turn on BOBBY phone interaction in Android Accessibility settings first."
+                BobbyAccessibilityController.enterText(field, value) -> "I entered the text into the visible $field field. Please review it before submitting."
+                else -> "I couldn't identify an editable field matching $field on this screen."
+            }
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
+        if (Regex("""(?i)^\s*(?:bobby[, ]+)?scroll\s+down\s*$""").matches(clean)) {
+            val reply = if (BobbyAccessibilityController.scrollDown()) "Scrolled down." else "I couldn't find a scrollable area on this screen."
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
+        if (Regex("""(?i)^\s*(?:bobby[, ]+)?scroll\s+up\s*$""").matches(clean)) {
+            val reply = if (BobbyAccessibilityController.scrollUp()) "Scrolled up." else "I couldn't find a scrollable area on this screen."
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
+        if (Regex("""(?i)^\s*(?:bobby[, ]+)?go\s+back\s*$""").matches(clean)) {
+            val reply = if (BobbyAccessibilityController.goBack()) "Going back." else "Android didn't allow the Back action."
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
+        if (Regex("""(?i)^\s*(?:bobby[, ]+)?go\s+home\s*$""").matches(clean)) {
+            val reply = if (BobbyAccessibilityController.goHome()) "Going to the Home screen." else "Android didn't allow the Home action."
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
+        if (Regex("""(?i)\b(?:play|start)\s+chess\b""").containsMatchIn(clean)) {
+            runCatching { BobbyAndroidActions.openApp(appContext, "chess") }
+                .onSuccess { appName ->
+                    val reply = "Opening $appName. Tell me when the board is ready and I'll help with the game where its controls are accessible."
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                }.onFailure {
+                    val reply = "I couldn't find an installed chess app. I can still suggest another activity."
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                }
         }
         val openApp = Regex("""(?i)\b(?:open|launch|start)\s+(.{2,40})$""").find(clean)
         if (openApp != null) {
