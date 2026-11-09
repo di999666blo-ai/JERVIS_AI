@@ -353,6 +353,33 @@ private fun BobbyHome(
             onSpeak("Guest session ended.")
             return
         }
+        if (Regex("""(?i)\b(entertain|entertainment|amuse)\b""").containsMatchIn(clean)) {
+            val namedGuest = Regex("""(?i)\b(?:entertain|entertainment|amuse)\s+([\p{L}][\p{L} .'-]{1,40})$""").find(clean)?.groupValues?.get(1)?.trim()
+            if (!namedGuest.isNullOrBlank() && socialCompanion.activeGuest().isBlank()) {
+                runCatching { socialCompanion.introduceGuest(namedGuest) }
+            }
+            val guest = socialCompanion.activeGuest().ifBlank { "there" }
+            socialCompanion.offerActivity("chess")
+            val reply = "$guest, would you like to play chess with me? Say yes to open a chess app, or no and I'll suggest another activity."
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
+        val pendingActivity = socialCompanion.pendingActivity()
+        if (pendingActivity == "chess" && Regex("""(?i)^\s*(?:yes|yeah|yep|sure|okay|ok|let's play|lets play|play)\s*[.!]?\s*$""").matches(clean)) {
+            socialCompanion.clearPendingActivity()
+            runCatching { BobbyAndroidActions.openApp(appContext, "chess") }
+                .onSuccess { appName ->
+                    val reply = "Great! Opening $appName. Let me know when the board is ready. I'll help with the game if its controls are accessible."
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                }.onFailure {
+                    val reply = "I couldn't find a chess app installed. We can choose a quiz or riddles instead, or add a chess game inside BOBBY."
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                }
+        }
+        if (pendingActivity == "chess" && Regex("""(?i)^\s*(?:no|nope|not now|maybe later)\s*[.!]?\s*$""").matches(clean)) {
+            socialCompanion.clearPendingActivity()
+            val reply = "No problem! Would you prefer a quiz, a riddle, some music, or just a friendly chat?"
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
         if (listOf("update yourself", "update bobby", "check for updates", "update the apk", "install bobby update").any { lower.contains(it) }) {
             chat.add(ChatLine(false, clean))
             chat.add(ChatLine(true, "Opening BOBBY's secure update manager. I'll check the published APK and ask Android to confirm installation."))
