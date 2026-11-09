@@ -137,3 +137,11 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Added the Public API Directory to the existing plugin catalogue. Directory listings remain discovery-only and are not represented as connected adapters.
 - This is Phase 1 foundation only. No bulk API integrations, OAuth connections, arbitrary endpoint execution, image-generation service or 3D-generation service were added by this change.
 - Gradle build, automated parser tests and physical Android device verification have not yet been run; compilation and runtime behavior remain unverified.
+
+
+## 2026-11-09 — Live web research in normal BOBBY chat (implementation added; build verification pending)
+- Connected the existing Brave Search adapter to the ordinary AI chat path for questions containing explicit freshness/research intent (latest, today, current, news, price, weather, scores, web search, etc.).
+- Search runs only when the user has configured a Brave Search key in Web Research settings. Up to six result titles, descriptions and source URLs are passed as untrusted research context to the configured AI provider.
+- BOBBY is instructed to distinguish source claims, cite supplied URLs and disclose when search could not be performed. If no search key exists, it must not pretend to browse.
+- This is a limited search-trigger heuristic, not a full browser, arbitrary API execution engine, or guaranteed retrieval for every query. No web search key is bundled.
+- Build, automated tests and Android-device verification remain pending.
