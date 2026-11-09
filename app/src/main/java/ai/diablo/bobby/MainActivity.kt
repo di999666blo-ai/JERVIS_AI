@@ -280,10 +280,15 @@ private fun BobbyHome(
     val avatarStore = remember { BobbyAvatarStore(appContext) }
     var avatarLook by remember { mutableStateOf(avatarStore.load()) }
     var avatarStudioOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(avatarLook.autoChangeEnabled, avatarLook.autoChangeHours, avatarLook.lastChangeMillis) {
+        BobbyOutfitScheduler.sync(appContext, avatarLook)
+    }
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(60_000)
-            val current = avatarLook
+            val storedLook = avatarStore.load()
+            if (storedLook != avatarLook) avatarLook = storedLook
+            val current = storedLook
             val now = System.currentTimeMillis()
             val due = current.lastChangeMillis == 0L || now - current.lastChangeMillis >= current.autoChangeHours * 3_600_000L
             if (current.autoChangeEnabled && due) {
