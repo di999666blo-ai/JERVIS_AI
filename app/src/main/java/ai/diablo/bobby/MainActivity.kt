@@ -302,6 +302,7 @@ private fun BobbyHome(
         }
     }
     var voiceCloneOpen by remember { mutableStateOf(false) }
+    var integrationsOpen by remember { mutableStateOf(false) }
     var dexterOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
@@ -711,6 +712,7 @@ private fun BobbyHome(
                         TextButton(onClick = { creativeStudioOpen = true }) { Text("CREATIVE STUDIO", color = Neon) }
                         TextButton(onClick = { robot3dOpen = true }) { Text("3D ROBOT", color = Neon) }
                         TextButton(onClick = { voiceCloneOpen = true }) { Text("CUSTOM BOBBY VOICE", color = Neon) }
+                        TextButton(onClick = { integrationsOpen = true }) { Text("GMAIL • CALENDAR • SOCIAL", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
                         TextButton(onClick = { screenCaptureLauncher.launch((appContext.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }) { Text("SEE MY SCREEN", color = Neon) }
                         TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
@@ -1352,6 +1354,9 @@ private fun BobbyHome(
                 }
                 if (voiceCloneOpen) {
                     BobbyVoiceCloneDialog(onDismiss = { voiceCloneOpen = false }, onPreview = onSpeak)
+                }
+                if (integrationsOpen) {
+                    BobbyExternalIntegrationsDialog(onDismiss = { integrationsOpen = false })
                 }
                 if (settingsOpen) {
                     AlertDialog(
