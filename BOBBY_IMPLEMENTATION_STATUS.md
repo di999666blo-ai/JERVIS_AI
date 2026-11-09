@@ -113,6 +113,13 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Build verification and on-device icon/bubble appearance check pending.
 
 
+## 2026-11-09 — Creative Studio and 3D specialist profiles
+- Added `.github/agents/creative-studio.agent.md` for visual art direction, image-generation workflows, UI artwork, character concepts, Android asset integration and asset optimization.
+- Added `.github/agents/3d-asset-engineer.agent.md` for actual editable 3D assets, GLB/glTF, materials, rigging, animation and Android rendering constraints.
+- Added routing guidance to GitHub Copilot instructions and the Codex workflow so visual tasks load the appropriate specialist profiles.
+- These files are agent instruction profiles, not proof that an image-generation provider, Blender runner, 3D generation API or Copilot agent picker is connected. Actual image/3D generation requires an available generation tool or configured provider. Codex can follow these profiles to implement integrations and asset pipelines.
+- No new 3D model or generated image asset was produced by this configuration change. No Android runtime 3D renderer was added or device-tested.
+
 ## 2026-11-09 — GitHub coding-agent foundation
 - Added a manually triggered GitHub Actions workflow at `.github/workflows/bobby-codex-agent.yml` using the official OpenAI Codex GitHub Action.
 - The workflow is restricted to `bobby-development`, reads the existing `AGENTS.md` and selected ECC-derived skills, uses a workspace-scoped Codex permission profile, and proposes code changes through a reviewable pull request rather than merging automatically.
