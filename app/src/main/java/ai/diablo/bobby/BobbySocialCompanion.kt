@@ -24,6 +24,24 @@ class BobbySocialCompanion(context: Context) {
 
     fun activeGuest(): String = prefs.getString("active_guest", "").orEmpty()
 
+    fun offerActivity(activity: String) {
+        prefs.edit().putString("pending_activity", activity.take(40))
+            .putLong("pending_activity_at", System.currentTimeMillis()).apply()
+    }
+
+    fun pendingActivity(): String {
+        val created = prefs.getLong("pending_activity_at", 0L)
+        if (created == 0L || System.currentTimeMillis() - created > 120_000L) {
+            clearPendingActivity()
+            return ""
+        }
+        return prefs.getString("pending_activity", "").orEmpty()
+    }
+
+    fun clearPendingActivity() {
+        prefs.edit().remove("pending_activity").remove("pending_activity_at").apply()
+    }
+
     fun endGuestSession() {
         prefs.edit().remove("active_guest").remove("introduced_at").apply()
     }
