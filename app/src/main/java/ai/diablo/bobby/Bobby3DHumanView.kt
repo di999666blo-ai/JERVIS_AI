@@ -107,7 +107,13 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         part(0.52f,1.73f + bob,0f,0.15f,0.58f,0.16f,skin,0f,-armSwing)
         part(-0.57f,1.15f + bob,0.02f,0.13f,0.13f,0.13f,skin)
         part(0.57f,1.15f + bob,0.02f,0.13f,0.13f,0.13f,skin)
-        part(0f,1.48f + bob,0f,0.43f,0.62f,0.25f,top,0f,sway)
+        // Adult feminine silhouette: shaped waist and a fuller, clothed bust.
+        // These are garment-coloured mesh forms, not exposed anatomy.
+        part(0f,1.48f + bob,0f,0.39f,0.62f,0.245f,top,0f,sway)
+        part(-0.19f,1.72f + bob,0.205f,0.245f,0.235f,0.16f,top,0f,sway)
+        part(0.19f,1.72f + bob,0.205f,0.245f,0.235f,0.16f,top,0f,sway)
+        // Subtle fitted-waist panel keeps the silhouette readable in 3D.
+        part(0f,1.27f + bob,0.012f,0.325f,0.22f,0.235f,top,0f,sway)
         part(0f,2.13f + bob,0f,0.13f,0.18f,0.13f,skin)
         // Head and hair cap
         part(0f,2.52f + bob,0f,0.36f,0.43f,0.31f,skin,0f,sway)
