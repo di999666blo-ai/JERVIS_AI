@@ -239,6 +239,7 @@ private fun BobbyHome(
     var memoryContent by remember { mutableStateOf("") }
     var memoryCategory by remember { mutableStateOf("General") }
     var memorySearchQuery by remember { mutableStateOf("") }
+    var editingMemoryId by remember { mutableStateOf<String?>(null) }
     var memoryItems by remember { mutableStateOf(memoryStore.list()) }
     var draft by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("IDLE") }
@@ -705,7 +706,15 @@ private fun BobbyHome(
                                                 Text(item.title, color = Color.White)
                                                 Text(item.content.take(160), color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                             }
-                                            TextButton(onClick = { memoryStore.delete(item.id); memoryItems = memoryStore.list() }) { Text("DELETE", color = Neon) }
+                                            Column {
+                                                TextButton(onClick = {
+                                                    editingMemoryId = item.id
+                                                    memoryCategory = item.category
+                                                    memoryTitle = item.title
+                                                    memoryContent = item.content
+                                                }) { Text("EDIT", color = Neon) }
+                                                TextButton(onClick = { memoryStore.delete(item.id); memoryItems = memoryStore.list(); if (editingMemoryId == item.id) { editingMemoryId = null; memoryTitle = ""; memoryContent = "" } }) { Text("DELETE", color = Neon) }
+                                            }
                                         }
                                     }
                                 }
@@ -722,9 +731,13 @@ private fun BobbyHome(
                         confirmButton = {
                             TextButton(onClick = {
                                 runCatching { memoryStore.save(memoryCategory, memoryTitle, memoryContent) }
-                                    .onSuccess { memoryTitle = ""; memoryContent = ""; memoryItems = memoryStore.list() }
+                                    .onSuccess {
+                                        editingMemoryId?.let { memoryStore.update(it, memoryCategory, memoryTitle, memoryContent) }
+                                            ?: memoryStore.save(memoryCategory, memoryTitle, memoryContent)
+                                        editingMemoryId = null; memoryTitle = ""; memoryContent = ""; memoryItems = memoryStore.list()
+                                    }
                                     .onFailure { chat.add(ChatLine(true, "Memory was not saved: ${it.message}")) }
-                            }) { Text("SAVE MEMORY", color = Neon) }
+                            }) { Text(if (editingMemoryId == null) "SAVE MEMORY" else "UPDATE MEMORY", color = Neon) }
                         },
                         dismissButton = { TextButton(onClick = { memoryOpen = false }) { Text("CLOSE") } }
                     )
