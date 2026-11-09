@@ -1,5 +1,7 @@
 package ai.diablo.bobby
 
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.unit.dp
 
 import android.content.Context
