@@ -33,6 +33,38 @@ class BobbyMemoryStore(context: Context) {
     }
 
     fun list(): List<BobbyMemory> = synchronized(lock) { readAll().sortedByDescending { it.updatedAt } }
+
+    /** Updates an existing memory while preserving its stable ID. */
+    fun update(id: String, category: String, title: String, content: String): BobbyMemory {
+        require(title.isNotBlank() && content.isNotBlank()) { "Title and content are required." }
+        val safe = redactSecrets(content.trim()).take(12000)
+        require(safe.isNotBlank()) { "Memory contains no safe content after secret filtering." }
+        synchronized(lock) {
+            val old = readAll().firstOrNull { it.id == id } ?: error("Memory no longer exists.")
+            val updated = old.copy(category = category.trim().ifBlank { "General" }.take(60),
+                title = title.trim().take(160), content = safe, updatedAt = System.currentTimeMillis())
+            val all = readAll().filterNot { it.id == id || (it.title.equals(updated.title, true) && it.category.equals(updated.category, true)) }
+            writeAll((listOf(updated) + all).take(500))
+            return updated
+        }
+    }
+
+    /** Explicit natural-language memory command. Returns null when the message is not a save request. */
+    fun rememberFromMessage(message: String): BobbyMemory? {
+        val match = Regex("(?is)^\\s*(?:bobby[, ]+)?(?:please\\s+)?remember\\s+(?:this|that|the following)?\\s*[:,-]?\\s*(.+?)\\s*$")
+            .matchEntire(message) ?: return null
+        val raw = match.groupValues[1].trim().trim('"', '\\'', ' ')
+        if (raw.length < 3 || raw.equals("this", true) || raw.equals("that", true)) return null
+        val category = when {
+            Regex("(?i)\\b(project|app|repository|github|build|code|feature)\\b").containsMatchIn(raw) -> "Projects"
+            Regex("(?i)\\b(birthday|anniversary|appointment|meeting|date|remind)\\b").containsMatchIn(raw) -> "Important Dates"
+            Regex("(?i)\\b(always|prefer|preference|instruction|please use|don't|do not)\\b").containsMatchIn(raw) -> "Instructions"
+            Regex("(?i)\\b(my name|i am|i'm|my favourite|my favorite|i like|i prefer)\\b").containsMatchIn(raw) -> "Personal"
+            else -> "General"
+        }
+        val title = raw.replace(Regex("\\s+"), " ").take(72).let { if (it.length == 72) it.take(69) + "..." else it }
+        return save(category, title, raw)
+    }
     fun search(query: String): List<BobbyMemory> {
         val q = query.trim()
         if (q.isEmpty()) return list()
