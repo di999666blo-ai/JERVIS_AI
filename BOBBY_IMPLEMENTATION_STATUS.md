@@ -145,3 +145,11 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - BOBBY is instructed to distinguish source claims, cite supplied URLs and disclose when search could not be performed. If no search key exists, it must not pretend to browse.
 - This is a limited search-trigger heuristic, not a full browser, arbitrary API execution engine, or guaranteed retrieval for every query. No web search key is bundled.
 - Build, automated tests and Android-device verification remain pending.
+
+
+## 2026-11-09 — Creative Studio adapters (implementation added; verification pending)
+- Added an in-app Creative Studio entry for OpenAI image generation and Meshy text-to-3D GLB generation.
+- Image generation uses the configured OpenAI API key and official Images API. Meshy API key is stored with Android Keystore encryption.
+- 3D generation follows Meshy's two-stage preview/refine workflow, polls task status, downloads a textured GLB, and exports it through Android's document picker.
+- Provider accounts, API access and credits are required. No credentials are bundled. This does not yet include an embedded interactive 3D viewport.
+- Build, tests, API live calls and Android-device verification remain pending.
