@@ -5,6 +5,9 @@ on:
     branches: [bobby-development]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: bobby-android-${{ github.ref }}
   cancel-in-progress: true
@@ -23,9 +26,26 @@ jobs:
           gradle-version: '8.13'
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: bobby-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+      - name: Publish public APK release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: bobby-public
+          target_commitish: bobby-development
+          name: BOBBY Android APK
+          body: |
+            Public Android APK build from the bobby-development branch.
+
+            Direct download: https://github.com/di999666blo-ai/JERVIS_AI/releases/latest/download/BOBBY.apk
+
+            This is a debug-signed APK. Android may display an install warning. Review permissions before installing.
+          files: app/build/outputs/apk/debug/app-debug.apk
+          rename_files: true
+          overwrite_files: true
+          make_latest: true
