@@ -21,7 +21,8 @@ class BobbyPluginStore(context: Context) {
     val catalog = listOf(
         BobbyPluginDescriptor("github", "GitHub", "Secure token storage exists; repository and Actions API operations are not yet wired.", "Developer", "Fine-grained token", "FOUNDATION"),
         BobbyPluginDescriptor("deriv", "Deriv", "Account verification only; live market streaming and trading are not implemented.", "Trading", "API token", "READY"),
-        BobbyPluginDescriptor("web_research", "Web Research", "Brave Search adapter foundation exists; full ordinary-chat dispatch and page reading remain incomplete.", "Research"),
+        BobbyPluginDescriptor("web_research", "Web Research", "Brave Search integration for current web research in ordinary chat.", "Research", "Brave Search API key", "READY"),
+        BobbyPluginDescriptor("creative_studio", "Creative Studio", "OpenAI image generation and Meshy text-to-3D GLB asset generation; provider API keys and credits required.", "Creative", "OpenAI API key + Meshy API key for 3D", "READY"),
         BobbyPluginDescriptor("public_api_directory", "Public API Directory", "Search and browse the public-apis community catalogue; listed providers are not automatically connected.", "Research", "None for catalogue browsing", "CATALOGUE"),
         BobbyPluginDescriptor("google_drive", "Google Drive", "Cloud file search and OAuth adapter pending.", "Storage"),
         BobbyPluginDescriptor("notion","Notion","Pages, databases and workspace content.","Productivity"),
