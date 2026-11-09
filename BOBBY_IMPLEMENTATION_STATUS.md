@@ -178,3 +178,13 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Screen capture was already implemented and is retained: the **SEE MY SCREEN** control requests Android MediaProjection consent, captures one screen frame, then passes it to the configured vision-capable AI model for analysis. It is user-authorized, not hidden or continuous capture. Image analysis requires an AI provider/model that supports vision.
 - Source commits include: 3D GLB preview `810a479d85fca9fde0887b1da735bd46de4c87b1`, BOBBY 3D preset `4a80820d4063e40c2a3fc009be92acc2ea8f3187`, startup wiring `265dbfce1ee8a11b8ffd7cff2a81b20de1cafa18`, startup screen `306e97cf0b151f0d4f0dcdf60871e293b777a11f`, original interactive robot scene `e73d83f79fb334e262443e107732b329a5202542`, dashboard button `a07196dcb82c90738e40ea79bac6902a5e87c3d6`.
 - APK compilation and physical-device testing remain pending. Do not claim the new screens are working on-device until a successful Actions build and installation test are confirmed.
+
+
+## 2026-11-09 — Categorised Memory Vault upgrade
+- Extended the existing local memory store with stable-ID edit/update support and natural-language save commands such as “Bobby, remember this: …”.
+- Added automatic category assignment for Personal, Projects, Important Dates, Instructions and General memories. This is rule-based classification, not a claim of perfect semantic categorisation.
+- Updated memory retrieval to search using multiple terms from the latest user question and include matching user-approved records in the online AI context, rather than injecting a fixed set of the newest records.
+- Updated the existing Memory Vault UI with category entry, search, edit, update, delete, clear and JSON export controls. Data remains in app-private SharedPreferences on this phone and survives ordinary app restarts; it is not cloud-synchronised or an encrypted filesystem vault.
+- Basic credential-pattern filtering remains in place. Users should not save passwords, API tokens, financial credentials or highly sensitive personal data.
+- Source commits: memory capture/update/retrieval `fbcf64b70942d452bed185ec1c4d7720f1944893`, chat integration `b36e85333b106336a62a87f57735e6394e7c913e`, category/search UI `05219a1ab69969829c2e9369b001a2539cf3f63d`, search matching `0da16808d795c76af11457b44a10787e843a1bbb`, callback label `c6929835e37714e69b289c645a7bea20378762b4`, editable vault UI `970d5bbc2e77637595ac46337e0cb6ec6463e66e`, save/update correction `ab5450ef225d3d91e4ba0ba434806865869bf591`.
+- Build and runtime verification pending. Automatic save/retrieval, UI editing, persistence and secret filtering must be tested in the APK before marking complete.
