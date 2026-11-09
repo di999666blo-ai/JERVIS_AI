@@ -35,14 +35,6 @@ class BobbyExternalIntegrations(private val context: Context) {
         if (provider in PROVIDERS) vault.remove("external_${provider}_token")
     }
 
-    fun verifyGoogle(callback: (Result<String>) -> Unit) = request("google") { token ->
-        val gmail = getJson("https://gmail.googleapis.com/gmail/v1/users/me/profile", token)
-        val calendar = getJson("https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1", token)
-        val email = gmail.optString("emailAddress", "Google account")
-        val count = calendar.optJSONArray("items")?.length() ?: 0
-        "Google connected as $email. Gmail profile verified; Calendar API verified (${count} calendar(s) returned in the sample page)."
-    }.also { /* callback is supplied by request overload below */ }
-
     fun verifyGoogle(callback: (Result<String>) -> Unit, unused: Unit = Unit) {
         run("google", callback) { token ->
             val gmail = getJson("https://gmail.googleapis.com/gmail/v1/users/me/profile", token)
