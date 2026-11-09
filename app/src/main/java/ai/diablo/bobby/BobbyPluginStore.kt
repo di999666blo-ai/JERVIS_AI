@@ -25,6 +25,7 @@ class BobbyPluginStore(context: Context) {
         BobbyPluginDescriptor("web_research", "Web Research", "Brave Search integration for current web research in ordinary chat.", "Research", "Brave Search API key", "READY"),
         BobbyPluginDescriptor("creative_studio", "Creative Studio", "OpenAI image generation and Meshy text-to-3D GLB asset generation; provider API keys and credits required.", "Creative", "OpenAI API key + Meshy API key for 3D", "SETUP REQUIRED"),
         BobbyPluginDescriptor("public_api_directory", "Public API Directory", "Search and browse the public-apis community catalogue; listed providers are not automatically connected.", "Research", "None for catalogue browsing", "CATALOGUE"),
+        BobbyPluginDescriptor("openvoice_v2", "OpenVoice V2", "MIT-licensed open-source voice cloning model; native V2 support for English, Spanish, French, Chinese, Japanese and Korean. Requires a self-hosted inference server; not yet connected to BOBBY.", "Voice & Audio", "None for model; server compute required", "SETUP REQUIRED"),
         BobbyPluginDescriptor("google_drive", "Google Drive", "Cloud file search and OAuth adapter pending.", "Storage"),
         BobbyPluginDescriptor("notion","Notion","Pages, databases and workspace content.","Productivity"),
         BobbyPluginDescriptor("slack","Slack","Messages, channels and workspace search.","Communication"),
