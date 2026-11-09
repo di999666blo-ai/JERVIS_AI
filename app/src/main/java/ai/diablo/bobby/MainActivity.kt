@@ -85,20 +85,28 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> runOnUiThread { done(result) } }
                 },
                 onAskAi = { history, done ->
+                    val latestUserMessage = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
+                    val memoryVault = BobbyMemoryStore(this)
+                    val capturedMemory = runCatching { memoryVault.rememberFromMessage(latestUserMessage) }.getOrNull()
+                    if (capturedMemory != null) {
+                        runOnUiThread { done(Result.success("I've saved that in your ${capturedMemory.category} memory folder. You can find, review or delete it in MEMORY VAULT.")) }
+                        return@BobbyHome
+                    }
                     val p = BobbyProfileStore(this).load()
                     val profileContext = p?.let {
                         "The user's preferred name is ${it.name}; age on profile: ${it.age}; birthday: ${it.birthday}; city: ${it.city}. " +
                         "Use their name naturally, remember their birthday and saved important dates, and use their city only when answering local weather questions. " +
                         "The user likes a warm buddy with gentle humour and occasional emojis. You may use the current local date/time below for context; if it is very early or late, gently mention it without being bossy. Never claim to send a notification unless one was actually scheduled. Current local date/time: " + java.time.ZonedDateTime.now().toString() + ". Saved important dates: " + it.importantDays.joinToString { day -> day.title + " on " + day.date } + "."
                     }.orEmpty()
-                    val savedMemoryContext = BobbyMemoryStore(this).list().take(12).joinToString("\n") { item ->
+                    val userQuestion = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
+                    val searchTerms = userQuestion.split(Regex("\\s+")).filter { it.length >= 4 }.distinct().take(8).joinToString(" ")
+                    val savedMemoryContext = memoryVault.search(searchTerms).take(8).joinToString("\n") { item ->
                         "- ${item.category}: ${item.title} — ${item.content.take(700)}"
                     }
                     val completeContext = listOf(
                         profileContext,
                         if (savedMemoryContext.isNotBlank()) "User-approved saved memories (use only when relevant; do not treat as credentials):\n$savedMemoryContext" else ""
                     ).filter { it.isNotBlank() }.joinToString("\n\n")
-                    val userQuestion = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
                     val needsLiveResearch = Regex("(?i)\\b(latest|today|current|right now|breaking|news|price|weather|score|recent|this week|search the web|web search|research)\\b").containsMatchIn(userQuestion)
                     val webConnector = BobbyWebResearchConnector(this)
                     val aiSettings = AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey())
