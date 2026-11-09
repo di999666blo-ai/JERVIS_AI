@@ -111,3 +111,13 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Updated the adaptive launcher icon background with a dark red neon gradient and border. Both `ic_launcher.xml` and `ic_launcher_round.xml` already reference these shared drawables, so the APK launcher icon updates automatically.
 - This is a lightweight vector illustration inspired by the supplied reference, not a true 3D model/render. Full-body 3D character animation and distinct listening/thinking/speaking/sleeping artwork remain incomplete.
 - Build verification and on-device icon/bubble appearance check pending.
+
+
+## 2026-11-09 — GitHub coding-agent foundation
+- Added a manually triggered GitHub Actions workflow at `.github/workflows/bobby-codex-agent.yml` using the official OpenAI Codex GitHub Action.
+- The workflow is restricted to `bobby-development`, reads the existing `AGENTS.md` and selected ECC-derived skills, uses a workspace-scoped Codex permission profile, and proposes code changes through a reviewable pull request rather than merging automatically.
+- Added GitHub Copilot repository instructions and specialist agent profiles for Android engineering, security review and QA verification under `.github/`.
+- The repository still contains a selected set of five ECC-derived skills, not the full ECC agent catalogue, hook system, MCP servers or native plugin runtime. Codex is the execution engine in the new GitHub workflow; ECC supplies project workflow guidance.
+- The Codex workflow cannot run until the repository owner adds an `OPENAI_API_KEY` GitHub Actions secret. This is an OpenAI API credential and is separate from a ChatGPT subscription or the API key stored inside the BOBBY Android app.
+- The workflow has not yet completed an agent run. Proposed changes require review and explicit merge. GitHub Copilot cloud-agent availability depends on repository/account enablement and is not assumed.
+- Android CI builds triggered by these commits are pending. The latest verified APK build remains the earlier successful build; no new APK is claimed for this milestone.
