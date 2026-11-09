@@ -1057,6 +1057,11 @@ private fun BobbyHome(
                                 Divider(color = Neon.copy(alpha = 0.45f))
                                 Text("PUBLIC API EXPLORER", color = Neon, style = MaterialTheme.typography.titleMedium)
                                 Text("Browse the community API directory. BOBBY imports API descriptions and documentation links only; it does not automatically call every listed service.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(10.dp)).padding(10.dp)) {
+                                    Text("FREE VOICE CLONING • OPEN SOURCE", color = Color(0xFF8BC34A), style = MaterialTheme.typography.titleSmall)
+                                    Text("OpenVoice V2 • MIT license • self-hosted, no paid API key. Native languages: English, Spanish, French, Chinese, Japanese and Korean. A capable computer/server is still needed; this is not a free hosted service.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                    TextButton(onClick = { runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/myshell-ai/OpenVoice"))) } }) { Text("OPEN OPENVOICE V2", color = Color(0xFF8BC34A)) }
+                                }
                                 OutlinedTextField(value = publicApiSearchDraft, onValueChange = { publicApiSearchDraft = it.take(100) }, label = { Text("Search APIs, topics or categories") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                     OutlinedButton(enabled = !publicApiBusy, onClick = {
