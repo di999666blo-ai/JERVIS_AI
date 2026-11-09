@@ -1218,6 +1218,7 @@ private fun BobbyHome(
                                 }
                                 if (agentBusy) { CircularProgressIndicator(color = Neon); Text("BOBBY is preparing the task plan…") }
                                 if (agentPlan.isNotBlank()) { Text("TASK PLAN", color = Neon); Text(agentPlan, color = Color.White, style = MaterialTheme.typography.bodySmall) }
+                                OutlinedButton(onClick = { agentOpen = false; dexterOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("OPEN DEXTER FINANCIAL RESEARCH", color = Neon) }
                                 Text("EXECUTION ENGINE", color = Neon)
                                 Text("Supported commands: open app <name> • set alarm HH:mm [label]. Preparing is safe; execution requires your separate approval.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                 executionStatus.takeIf { it.isNotBlank() }?.let { Text(it, color = Color.LightGray, style = MaterialTheme.typography.bodySmall) }
