@@ -128,3 +128,12 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - The Codex workflow cannot run until the repository owner adds an `OPENAI_API_KEY` GitHub Actions secret. This is an OpenAI API credential and is separate from a ChatGPT subscription or the API key stored inside the BOBBY Android app.
 - The workflow has not yet completed an agent run. Proposed changes require review and explicit merge. GitHub Copilot cloud-agent availability depends on repository/account enablement and is not assumed.
 - Android CI builds triggered by these commits are pending. The latest verified APK build remains the earlier successful build; no new APK is claimed for this milestone.
+
+
+## 2026-11-09 — Public API Explorer foundation (implementation added; build verification pending)
+- Added `BobbyPublicApiCatalog`, which downloads the upstream public-apis README over HTTPS, parses category/provider metadata, validates documentation links, stores a local cache and preserves the last known-good catalogue when refresh fails.
+- Added a searchable Public API Explorer section inside the existing ADD PLUGINS dialog, including manual refresh, source link, API metadata and open-documentation actions.
+- Registered a read-only `public_api_catalog` planner tool for catalogue discovery. It does not execute third-party APIs.
+- Added the Public API Directory to the existing plugin catalogue. Directory listings remain discovery-only and are not represented as connected adapters.
+- This is Phase 1 foundation only. No bulk API integrations, OAuth connections, arbitrary endpoint execution, image-generation service or 3D-generation service were added by this change.
+- Gradle build, automated parser tests and physical Android device verification have not yet been run; compilation and runtime behavior remain unverified.
