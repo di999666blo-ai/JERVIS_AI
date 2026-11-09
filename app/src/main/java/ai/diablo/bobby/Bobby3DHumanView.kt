@@ -91,45 +91,69 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         val current = look
         val palette = intArrayOf(0xFFE85D75.toInt(),0xFF8E44AD.toInt(),0xFF2878B5.toInt(),0xFF168A72.toInt(),0xFFE08B32.toInt(),0xFF343A52.toInt(),0xFFB13B62.toInt(),0xFF6B7D35.toInt(),0xFF252525.toInt(),0xFFE8D7C5.toInt())
         val hairPalette = intArrayOf(0xFF211713.toInt(),0xFF4B2A1B.toInt(),0xFF8B542E.toInt(),0xFF171717.toInt(),0xFFB77B42.toInt(),0xFF5B344A.toInt(),0xFF292B46.toInt(),0xFFD6B36A.toInt(),0xFF6E6E6E.toInt(),0xFF9A3C35.toInt())
-        val top = palette[current.outfit % 10]
-        val lower = palette[(current.outfit / 10) % 10]
-        val shoes = palette[(current.outfit / 100) % 10]
+        // 10 upper styles x 10 lower styles x 10 shoe styles = 1,000 distinct procedural combinations.
+        val topStyle = current.outfit % 10
+        val bottomStyle = (current.outfit / 10) % 10
+        val shoeStyle = (current.outfit / 100) % 10
+        val top = palette[topStyle]
+        val lower = palette[(bottomStyle + topStyle * 3) % 10]
+        val shoes = palette[(shoeStyle + bottomStyle * 2) % 10]
+        val trim = palette[(topStyle + bottomStyle + shoeStyle + 5) % 10]
         val hair = hairPalette[current.hair.coerceIn(0,9)]
         val skin = 0xFFE9B99E.toInt()
         val bustScale = 0.78f + current.bustSize.coerceIn(1,10) * 0.075f
-        val outfitStyle = (current.outfit / 10) % 5
         // Procedural idle/walk-in-place leg articulation (low-cost ES 2.0).
         val legSwing = if (active) sin(t * 3.2f) * 10f else sin(t * 1.1f) * 1.8f
-        part(-0.25f,0.72f,0f,0.17f,0.58f,0.19f,lower,bob,legSwing)
-        part(0.25f,0.72f,0f,0.17f,0.58f,0.19f,lower,bob,-legSwing)
-        // A separate lower-garment layer changes silhouette by generated style.
-        if (outfitStyle % 2 == 0) {
-            part(0f,1.02f,0.012f,0.43f,0.25f,0.255f,lower,bob)
-        } else {
-            part(0f,1.12f,0.012f,0.36f,0.17f,0.245f,lower,bob)
+        // Ten lower-garment silhouettes: skirt, wide-leg, shorts, maxi, fitted pants, pleats and layered looks.
+        val legWidth = if (bottomStyle == 1 || bottomStyle == 4 || bottomStyle == 7) 0.145f else 0.17f
+        part(-0.25f,0.72f,0f,legWidth,0.58f,0.19f,lower,bob,legSwing)
+        part(0.25f,0.72f,0f,legWidth,0.58f,0.19f,lower,bob,-legSwing)
+        when (bottomStyle) {
+            0, 6 -> part(0f,1.02f,0.012f,0.43f,0.25f,0.255f,lower,bob)
+            1 -> { part(-0.18f,0.99f,0.012f,0.24f,0.24f,0.23f,lower,bob); part(0.18f,0.99f,0.012f,0.24f,0.24f,0.23f,lower,bob) }
+            2, 8 -> part(0f,1.08f,0.012f,0.38f,0.16f,0.24f,lower,bob)
+            3 -> part(0f,0.91f,0.012f,0.48f,0.36f,0.26f,lower,bob)
+            4 -> { part(-0.25f,0.78f,0.012f,0.16f,0.48f,0.20f,lower,bob); part(0.25f,0.78f,0.012f,0.16f,0.48f,0.20f,lower,bob) }
+            5 -> part(0f,1.02f,0.012f,0.40f,0.21f,0.24f,lower,bob)
+            7 -> part(0f,1.12f,0.012f,0.37f,0.14f,0.24f,lower,bob)
+            9 -> { part(0f,1.00f,0.012f,0.44f,0.28f,0.25f,lower,bob); part(0f,0.84f,0.02f,0.38f,0.12f,0.26f,trim,bob) }
         }
-        part(-0.27f,0.12f,0.12f,0.22f,0.12f,0.34f,shoes,bob)
-        part(0.27f,0.12f,0.12f,0.22f,0.12f,0.34f,shoes,bob)
+        // Ten shoe silhouettes: flat, trainers, heels, ankle boots and tall boots.
+        val shoeH = if (shoeStyle == 2 || shoeStyle == 5 || shoeStyle == 8) 0.17f else 0.12f
+        val shoeL = if (shoeStyle == 1 || shoeStyle == 4 || shoeStyle == 7) 0.40f else 0.34f
+        part(-0.27f,shoeH,0.12f,0.22f,shoeH,shoeL,shoes,bob)
+        part(0.27f,shoeH,0.12f,0.22f,shoeH,shoeL,shoes,bob)
+        if (shoeStyle in 2..5 || shoeStyle == 8) {
+            part(-0.27f,0.25f,0.29f,0.055f,0.18f,0.06f,trim,bob)
+            part(0.27f,0.25f,0.29f,0.055f,0.18f,0.06f,trim,bob)
+        }
+        if (shoeStyle == 6 || shoeStyle == 9) {
+            part(-0.27f,0.16f,0.02f,0.16f,0.20f,0.18f,trim,bob)
+            part(0.27f,0.16f,0.02f,0.16f,0.20f,0.18f,trim,bob)
+        }
         // Arms, hands and torso
         val armSwing = if (active) sin(t * 3.2f) * 0.13f else sway * 0.5f
         part(-0.52f,1.73f + bob,0f,0.15f,0.58f,0.16f,skin,0f,armSwing)
         part(0.52f,1.73f + bob,0f,0.15f,0.58f,0.16f,skin,0f,-armSwing)
         part(-0.57f,1.15f + bob,0.02f,0.13f,0.13f,0.13f,skin)
         part(0.57f,1.15f + bob,0.02f,0.13f,0.13f,0.13f,skin)
-        // Adult feminine silhouette: shaped waist and a fuller, clothed bust.
-        // These are garment-coloured mesh forms, not exposed anatomy.
-        part(0f,1.48f + bob,0f,0.39f,0.62f,0.245f,top,0f,sway)
+        // Ten upper-garment cuts: fitted, jacket, cropped, dress bodice, blouse,
+        // wrap, hoodie layer, high-neck, vest and evening top.
+        val torsoWidth = if (topStyle == 2 || topStyle == 8) 0.36f else 0.39f
+        val torsoHeight = if (topStyle == 3 || topStyle == 9) 0.56f else 0.62f
+        part(0f,1.48f + bob,0f,torsoWidth,torsoHeight,0.245f,top,0f,sway)
         part(-0.19f,1.72f + bob,0.205f,0.245f*bustScale,0.235f,0.16f*bustScale,top,0f,sway)
         part(0.19f,1.72f + bob,0.205f,0.245f*bustScale,0.235f,0.16f*bustScale,top,0f,sway)
-        // Optional fashion details: jacket panels or a waist belt, depending on style.
-        if (outfitStyle == 1 || outfitStyle == 3) {
-            part(-0.31f,1.58f + bob,0.19f,0.055f,0.34f,0.075f,lower,0f,sway)
-            part(0.31f,1.58f + bob,0.19f,0.055f,0.34f,0.075f,lower,0f,sway)
-        } else if (outfitStyle == 2 || outfitStyle == 4) {
-            part(0f,1.36f + bob,0.245f,0.34f,0.045f,0.035f,shoes,0f,sway)
+        when (topStyle) {
+            1, 6 -> { part(-0.31f,1.58f+bob,0.19f,0.065f,0.36f,0.075f,trim,0f,sway); part(0.31f,1.58f+bob,0.19f,0.065f,0.36f,0.075f,trim,0f,-sway) }
+            2, 9 -> { part(0f,1.31f+bob,0.245f,0.34f,0.055f,0.035f,trim,0f,sway); part(-0.20f,1.83f+bob,0.22f,0.08f,0.06f,0.035f,trim); part(0.20f,1.83f+bob,0.22f,0.08f,0.06f,0.035f,trim) }
+            3 -> { part(0f,1.22f+bob,0.02f,0.39f,0.16f,0.25f,top); part(0f,1.38f+bob,0.25f,0.29f,0.035f,0.025f,trim) }
+            4, 7 -> { part(0f,1.91f+bob,0.19f,0.20f,0.07f,0.07f,trim); part(-0.38f,1.62f+bob,0f,0.10f,0.22f,0.12f,top); part(0.38f,1.62f+bob,0f,0.10f,0.22f,0.12f,top) }
+            5 -> { part(-0.10f,1.75f+bob,0.245f,0.06f,0.24f,0.025f,trim,0f,-22f); part(0.10f,1.75f+bob,0.245f,0.06f,0.24f,0.025f,trim,0f,22f) }
+            8 -> { part(-0.24f,1.58f+bob,0.22f,0.10f,0.34f,0.035f,trim); part(0.24f,1.58f+bob,0.22f,0.10f,0.34f,0.035f,trim) }
         }
-        // Subtle fitted-waist panel keeps the silhouette readable in 3D.
-        part(0f,1.27f + bob,0.012f,0.325f,0.22f,0.235f,top,0f,sway)
+        part(0f,1.27f + bob,0.252f,0.325f,0.22f,0.018f,top,0f,sway)
+        if (topStyle % 2 == 0) part(0f,1.36f+bob,0.27f,0.34f,0.025f,0.02f,trim,0f,sway)
         // Small animated side panels add a restrained cloth-like secondary motion.
         val clothFlutter = sin(t * 2.6f + 0.7f) * 4.5f
         if (outfitStyle == 0 || outfitStyle == 2 || outfitStyle == 4) {
@@ -179,9 +203,9 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         part(0f,1.58f + bob,0.251f,0.018f,0.11f,0.012f,0xFFFFD6A0.toInt())
         part(-0.52f,1.28f + bob,0.09f,0.16f,0.045f,0.035f,top)
         part(0.52f,1.28f + bob,0.09f,0.16f,0.045f,0.035f,top)
-        if (outfitStyle == 4) {
-            part(-0.27f,0.19f,0.31f,0.045f,0.12f,0.05f,shoes)
-            part(0.27f,0.19f,0.31f,0.045f,0.12f,0.05f,shoes)
+        if (shoeStyle == 4 || shoeStyle == 8) {
+            part(-0.27f,0.19f,0.31f,0.045f,0.12f,0.05f,trim)
+            part(0.27f,0.19f,0.31f,0.045f,0.12f,0.05f,trim)
         }
     }
 
