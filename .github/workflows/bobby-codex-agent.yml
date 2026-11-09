@@ -61,6 +61,9 @@ jobs:
 
             Mandatory:
             - Read AGENTS.md, BOBBY_MASTER_VISION.md, BOBBY_IMPLEMENTATION_STATUS.md and the relevant .agents/skills before editing.
+            - For visual design or image-generation tasks, also read .github/agents/creative-studio.agent.md.
+            - For 3D assets, GLB/glTF, rigging or Android 3D rendering, also read .github/agents/3d-asset-engineer.agent.md.
+            - For app code, security or QA tasks, read the corresponding specialist profile under .github/agents/.
             - Work only on bobby-development. Never modify master.
             - Preserve the existing app, dashboard, navigation, design and working features.
             - Use plan -> inspect -> test -> implement -> review -> verify.
