@@ -119,11 +119,11 @@ class BobbyNeuralVoice(private val context: Context) {
     private fun detectXttsLanguage(text: String): String {
         val value = text.lowercase()
         return when {
-            value.any { it in '\\u0600'..'\\u06ff' } -> "ar"
-            value.any { it in '\\u4e00'..'\\u9fff' } -> "zh-cn"
-            value.any { it in '\\u3040'..'\\u30ff' } -> "ja"
-            value.any { it in '\\uac00'..'\\ud7af' } -> "ko"
-            value.any { it in '\\u0400'..'\\u04ff' } -> "ru"
+            value.any { it.code in 0x0600..0x06ff } -> "ar"
+            value.any { it.code in 0x4e00..0x9fff } -> "zh-cn"
+            value.any { it.code in 0x3040..0x30ff } -> "ja"
+            value.any { it.code in 0xac00..0xd7af } -> "ko"
+            value.any { it.code in 0x0400..0x04ff } -> "ru"
             value.contains(Regex("[áéíóúñ¿¡]")) || listOf("hola ", "gracias", " por favor", " buenos días").any(value::contains) -> "es"
             value.contains(Regex("[àâçèêëîïôùûüÿœ]")) || listOf("bonjour", "merci", " je ", " vous ", " avec ").any(value::contains) -> "fr"
             value.contains(Regex("[ãõ]")) || listOf(" obrigado", "obrigada", " você ", " não ", " olá").any(value::contains) -> "pt"
