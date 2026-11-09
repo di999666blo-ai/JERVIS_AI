@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Build
-import androidx.core.content.FileProvider
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -34,9 +33,9 @@ class BobbyUpdateManager(private val context: Context) {
                 .firstOrNull { it.optString("name") == "BOBBY.apk" }
                 ?: error("Latest release does not contain BOBBY.apk.")
             val version = json.optString("tag_name", "latest")
-            val installed = if (Build.VERSION.SDK_INT >= 28) {
-                context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
-            } else @Suppress("DEPRECATION") context.packageManager.getPackageInfo(context.packageName, 0).versionCode.toLong()
+            @Suppress("DEPRECATION")
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val installed = if (Build.VERSION.SDK_INT >= 28) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
             val latestCode = Regex("""(?i)Version code:\s*(\d+)""").find(json.optString("body"))?.groupValues?.get(1)?.toLongOrNull() ?: -1L
             if (latestCode > 0L && latestCode <= installed) error("BOBBY is already up to date.")
             return BobbyUpdateInfo(version, asset.getString("browser_download_url"), asset.optString("digest").takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:"))
