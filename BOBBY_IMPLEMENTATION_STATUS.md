@@ -153,3 +153,6 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - 3D generation follows Meshy's two-stage preview/refine workflow, polls task status, downloads a textured GLB, and exports it through Android's document picker.
 - Provider accounts, API access and credits are required. No credentials are bundled. This does not yet include an embedded interactive 3D viewport.
 - Build, tests, API live calls and Android-device verification remain pending.
+
+- Creative Studio source file commit: `488fc2ef0b8875891d538dbddf3ebaf5ac6be7e3` (branch `bobby-development`). Dashboard and plugin catalogue integration commits: `6bfaee59879c77fa43688f3dfdf1605462eb99fd` and `3afbf1a00020867b5b9ea6a162a090e92f656575`.
+- GitHub combined status query returned no checks at verification time; this is not evidence of a successful build. The Android Actions workflow is configured to build on pushes to `bobby-development`, but its result and APK artifact have not yet been confirmed.
