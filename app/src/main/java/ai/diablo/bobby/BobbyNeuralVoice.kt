@@ -11,8 +11,8 @@ import java.net.URL
 import java.util.concurrent.Executors
 
 /**
- * BOBBY speech output. A user-created ElevenLabs voice takes priority; the
- * existing OpenAI neural voice is the next option and Android TTS is fallback.
+ * BOBBY speech output. User-owned XTTS voice profile first, existing neural
+ * provider second, Android TTS fallback last.
  */
 class BobbyNeuralVoice(private val context: Context) {
     private val worker = Executors.newSingleThreadExecutor()
@@ -25,46 +25,71 @@ class BobbyNeuralVoice(private val context: Context) {
         worker.execute {
             var connection: HttpURLConnection? = null
             try {
-                val cloneKey = vault.get("elevenlabs_api_key")
-                val cloneId = vault.get("elevenlabs_voice_id")
-                val usingClone = cloneKey.isNotBlank() && cloneId.isNotBlank()
-                val requestBody = if (usingClone) {
-                    JSONObject().apply {
-                        put("text", text.take(3500))
-                        put("model_id", "eleven_multilingual_v2")
-                        put("voice_settings", JSONObject().put("stability", 0.52).put("similarity_boost", 0.78))
-                    }.toString()
+                val base = vault.get("bobby_voice_server_url").trimEnd('/')
+                val profileId = vault.get("bobby_xtts_voice_profile_id")
+                val usingFreeClone = base.isNotBlank() && profileId.isNotBlank()
+                val audio = File(context.cacheDir, if (usingFreeClone) "bobby-free-clone.wav" else "bobby-neural-reply.mp3")
+                if (usingFreeClone) {
+                    val boundary = "----BobbyTTS" + System.nanoTime()
+                    val form = buildString {
+                        append("--$boundary\r\nContent-Disposition: form-data; name=\"voice_profile_id\"\r\n\r\n$profileId\r\n")
+                        append("--$boundary\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\n${text.take(3500)}\r\n")
+                        append("--$boundary\r\nContent-Disposition: form-data; name=\"language\"\r\n\r\nen\r\n")
+                        append("--$boundary\r\nContent-Disposition: form-data; name=\"save_to_library\"\r\n\r\nfalse\r\n")
+                        append("--$boundary--\r\n")
+                    }.toByteArray(Charsets.UTF_8)
+                    connection = (URL("$base/generations").openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"; connectTimeout = 20000; readTimeout = 30000; doOutput = true
+                        setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                    }
+                    connection.outputStream.use { it.write(form) }
+                    val code = connection.responseCode
+                    val raw = (if (code in 200..299) connection.inputStream else connection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    if (code !in 200..299) error("XTTS generation request failed (HTTP $code): ${raw.take(250)}")
+                    val jobId = JSONObject(raw).optString("job_id")
+                    require(jobId.isNotBlank()) { "XTTS server returned no generation job ID." }
+                    connection.disconnect(); connection = null
+                    var completed = false
+                    repeat(120) {
+                        Thread.sleep(2000)
+                        val statusConnection = URL("$base/generations/$jobId/status").openConnection() as HttpURLConnection
+                        val statusJson = try {
+                            statusConnection.connectTimeout = 15000; statusConnection.readTimeout = 15000
+                            val statusCode = statusConnection.responseCode
+                            val statusRaw = (if (statusCode in 200..299) statusConnection.inputStream else statusConnection.errorStream)?.bufferedReader()?.use { it.readText() }.orEmpty()
+                            if (statusCode !in 200..299) error("XTTS status check failed (HTTP $statusCode).")
+                            JSONObject(statusRaw)
+                        } finally { statusConnection.disconnect() }
+                        when (statusJson.optString("status")) {
+                            "completed" -> { completed = true; return@repeat }
+                            "failed" -> error("XTTS voice generation failed: ${statusJson.optString("error")}")
+                        }
+                        if (completed) return@repeat
+                    }
+                    require(completed) { "XTTS generation timed out. Try again or check the server." }
+                    val download = (URL("$base/generations/$jobId/audio?format=wav").openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 20000; readTimeout = 90000
+                    }
+                    try {
+                        require(download.responseCode in 200..299) { "Could not download XTTS speech audio." }
+                        download.inputStream.use { input -> audio.outputStream().use { output -> input.copyTo(output) } }
+                    } finally { download.disconnect() }
                 } else {
                     if (apiKey.isBlank()) { main.post { onFallback?.invoke() }; return@execute }
-                    JSONObject().apply {
-                        put("model", "gpt-4o-mini-tts")
-                        put("voice", "nova")
-                        put("input", text.take(3500))
+                    val body = JSONObject().apply {
+                        put("model", "gpt-4o-mini-tts"); put("voice", "nova"); put("input", text.take(3500))
                         put("response_format", "mp3")
-                        put("instructions", "You are Bobby, a calm, warm, natural adult female assistant. FIRST detect the language and dialect of the input text. Speak the entire response in that same language, using its correct native pronunciation, phonology, tones, stress, rhythm and natural intonation. If the text mixes languages, preserve the language of each phrase and pronounce each phrase naturally; do not translate it into English. If the input is Yoruba, Hausa, Igbo, Nigerian Pidgin, Arabic, French, Spanish, Portuguese, Hindi, Chinese, Japanese, Korean, or any other language you can speak, use that language rather than defaulting to English. Keep names as written and pronounce them as naturally as possible. Sound warm and conversational, with relaxed pacing and no exaggerated cartoon voice.")
+                        put("instructions", "You are Bobby, a calm, warm, natural adult female assistant. Speak naturally in the language of the input.")
                     }.toString()
+                    connection = (URL("https://api.openai.com/v1/audio/speech").openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"; connectTimeout = 20000; readTimeout = 60000; doOutput = true
+                        setRequestProperty("Content-Type", "application/json"); setRequestProperty("Accept", "audio/mpeg")
+                        setRequestProperty("Authorization", "Bearer $apiKey")
+                    }
+                    connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+                    require(connection.responseCode in 200..299) { "Speech provider returned HTTP ${connection.responseCode}." }
+                    connection.inputStream.use { input -> audio.outputStream().use { output -> input.copyTo(output) } }
                 }
-                val endpoint = if (usingClone) {
-                    "https://api.elevenlabs.io/v1/text-to-speech/" + cloneId + "?output_format=mp3_44100_128"
-                } else "https://api.openai.com/v1/audio/speech"
-                connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 20000
-                    readTimeout = 60000
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Accept", "audio/mpeg")
-                    if (usingClone) setRequestProperty("xi-api-key", cloneKey)
-                    else setRequestProperty("Authorization", "Bearer $apiKey")
-                }
-                connection.outputStream.use { it.write(requestBody.toByteArray(Charsets.UTF_8)) }
-                val code = connection.responseCode
-                if (code !in 200..299) {
-                    val detail = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty().take(300)
-                    throw IllegalStateException("Speech provider returned HTTP $code" + if (detail.isNotBlank()) ": $detail" else "")
-                }
-                val audio = File(context.cacheDir, "bobby-neural-reply.mp3")
-                connection.inputStream.use { input -> audio.outputStream().use { output -> input.copyTo(output) } }
                 require(audio.length() > 512) { "Speech provider returned an empty audio file." }
                 main.post {
                     runCatching {
@@ -73,16 +98,13 @@ class BobbyNeuralVoice(private val context: Context) {
                             setDataSource(audio.absolutePath)
                             setOnCompletionListener { it.release(); if (player === it) player = null }
                             setOnErrorListener { mp, _, _ -> mp.release(); if (player === mp) player = null; onFallback?.invoke(); true }
-                            prepare()
-                            start()
+                            prepare(); start()
                         }
                     }.onFailure { onFallback?.invoke() }
                 }
             } catch (_: Exception) {
                 main.post { onFallback?.invoke() }
-            } finally {
-                connection?.disconnect()
-            }
+            } finally { connection?.disconnect() }
         }
     }
 
@@ -90,8 +112,5 @@ class BobbyNeuralVoice(private val context: Context) {
         main.post { player?.let { runCatching { it.stop() }; it.release() }; player = null }
     }
 
-    fun release() {
-        stop()
-        worker.shutdownNow()
-    }
+    fun release() { stop(); worker.shutdownNow() }
 }
