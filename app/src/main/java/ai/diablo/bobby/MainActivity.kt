@@ -98,7 +98,12 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         profileContext,
                         if (savedMemoryContext.isNotBlank()) "User-approved saved memories (use only when relevant; do not treat as credentials):\n$savedMemoryContext" else ""
                     ).filter { it.isNotBlank() }.joinToString("\n\n")
-                    BobbyAiClient.reply(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, completeContext, BobbyModeStore(this).mode()) { result ->
+                    val userQuestion = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
+                    val needsLiveResearch = Regex("(?i)\\b(latest|today|current|right now|breaking|news|price|weather|score|recent|this week|search the web|web search|research)\\b").containsMatchIn(userQuestion)
+                    val webConnector = BobbyWebResearchConnector(this)
+                    val aiSettings = AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey())
+                    val askWithContext: (String) -> Unit = { webContext ->
+                        BobbyAiClient.reply(aiSettings, history, completeContext, BobbyModeStore(this).mode(), webContext) { result ->
                         if (result.isFailure && offlineAi.isModelInstalled()) {
                             val offlinePrompt = history.takeLast(10).joinToString("\n") { line ->
                                 (if (line.fromBobby) "BOBBY: " else "USER: ") + line.text
@@ -109,6 +114,20 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         } else {
                             runOnUiThread { done(result) }
                         }
+                        }
+                    }
+                    if (needsLiveResearch && webConnector.hasKey()) {
+                        webConnector.search(userQuestion) { searchResult ->
+                            val context = searchResult.getOrElse { emptyList() }.take(6).mapIndexed { index, item ->
+                                "[${index+1}] ${item.title}\n${item.description}\nSource: ${item.url}"
+                            }.joinToString("\n\n")
+                            runOnUiThread {
+                                if (context.isBlank()) askWithContext("Web search was attempted but returned no usable results. Tell the user live sources could not be verified.")
+                                else askWithContext(context)
+                            }
+                        }
+                    } else {
+                        askWithContext(if (needsLiveResearch) "No Brave Search key is configured. Do not claim to have browsed; tell the user to connect Web Research for live results." else "")
                     }
                 }
             )
