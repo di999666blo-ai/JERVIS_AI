@@ -140,6 +140,12 @@ fun BobbyVoiceCloneDialog(onDismiss: () -> Unit, onPreview: (String) -> Unit) {
             ) {
                 androidx.compose.material3.Text("ElevenLabs has been removed from this voice-cloning path. BOBBY now supports the free, open-source XTTS VoiceCloner server. You upload a sample; the server creates a reusable voice profile.")
                 androidx.compose.material3.Text("Important: the cloning model is too large for this Android phone to run reliably. A computer or hosted server must run the free model. The model software is free for personal/non-commercial use; hosting may still have infrastructure costs.", style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                androidx.compose.material3.Text("BEST FREE-LICENSE ALTERNATIVE: OpenVoice V2", color = androidx.compose.ui.graphics.Color(0xFF8BC34A))
+                androidx.compose.material3.Text("OpenVoice V2 is MIT-licensed and its authors state it is free for commercial and research use. Native V2 languages are English, Spanish, French, Chinese, Japanese and Korean. It is not an online free API: you must run its model server on your own capable computer or hosted server. BOBBY's current connector below is XTTS-compatible, not an OpenVoice server, so OpenVoice is not connected yet.", style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+                androidx.compose.material3.TextButton(onClick = {
+                    runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse("https://github.com/myshell-ai/OpenVoice"))) }
+                }) { androidx.compose.material3.Text("OPEN OPENVOICE V2 • MIT LICENSE", color = androidx.compose.ui.graphics.Color(0xFF8BC34A)) }
+                androidx.compose.material3.Text("CURRENT CONNECTOR BELOW: XTTS VoiceCloner. XTTS model weights use a non-commercial license; do not use that model commercially without separate permission. Its server may also cost money to host.", style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                 androidx.compose.material3.OutlinedTextField(
                     value = serverUrl, onValueChange = { serverUrl = it.take(300) },
                     label = { androidx.compose.material3.Text("Your XTTS server HTTPS URL") },
