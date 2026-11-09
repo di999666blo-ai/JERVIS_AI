@@ -164,7 +164,7 @@ fun BobbyVoiceCloneDialog(onDismiss: () -> Unit, onPreview: (String) -> Unit) {
                     androidx.compose.material3.Text(if (selectedName.isBlank()) "CHOOSE AUDIO SAMPLE" else "AUDIO: " + selectedName.take(50))
                 }
                 androidx.compose.material3.Text("Use a clear recording with one speaker and little background noise. MP3, WAV, M4A and other common audio formats are accepted by the phone picker.", style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
-                androidx.compose.material3.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     androidx.compose.material3.Checkbox(checked = consent, onCheckedChange = { consent = it })
                     androidx.compose.material3.Text("I own this voice or have the speaker's explicit permission to clone it.", style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
                 }
