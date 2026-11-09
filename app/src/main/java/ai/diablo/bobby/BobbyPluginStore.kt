@@ -131,6 +131,7 @@ class BobbyPluginStore(context: Context) {
         BobbyPluginDescriptor("canva","Canva","Design assets and supported export workflows.","Design"),
         BobbyPluginDescriptor("figma","Figma","Design files, comments and collaboration.","Design"),
         BobbyPluginDescriptor("cloudinary","Cloudinary","Image and video asset management.","Media"),
+        BobbyPluginDescriptor("offline_voice_library","Offline Voice Library","On-device Android TTS engines such as NekoSpeak and RHVoice; works through the system-selected TTS engine with downloaded local voices.","Voice & Audio","Installed Android TTS engine","READY"),
         BobbyPluginDescriptor("openai","OpenAI","AI model API and speech services.","AI Models"),
         BobbyPluginDescriptor("anthropic","Anthropic","Claude model API.","AI Models"),
         BobbyPluginDescriptor("google_gemini","Google Gemini","Gemini model API and multimodal services.","AI Models"),
