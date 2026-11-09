@@ -277,6 +277,22 @@ private fun BobbyHome(
     var webResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
     var robot3dOpen by remember { mutableStateOf(false) }
+    val avatarStore = remember { BobbyAvatarStore(appContext) }
+    var avatarLook by remember { mutableStateOf(avatarStore.load()) }
+    var avatarStudioOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000)
+            val current = avatarLook
+            val now = System.currentTimeMillis()
+            val due = current.lastChangeMillis == 0L || now - current.lastChangeMillis >= current.autoChangeHours * 3_600_000L
+            if (current.autoChangeEnabled && due) {
+                val next = current.copy(outfit = kotlin.random.Random.nextInt(0, 1000), lastChangeMillis = now)
+                avatarLook = next
+                avatarStore.save(next)
+            }
+        }
+    }
     var voiceCloneOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
@@ -755,18 +771,27 @@ private fun BobbyHome(
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("SHARE CONVERSATION TO APPS") }
                 Spacer(Modifier.height(4.dp))
-                Box(
-                    Modifier.offset { IntOffset(bubbleOffset.x.roundToInt(), bubbleOffset.y.roundToInt()) }
-                        .size(116.dp).scale(if (state == "LISTENING") listening else breathing)
-                        .background(Brush.radialGradient(listOf(Color(0xFFB51D50), Color(0xFF3C0B1D), Void)), CircleShape)
-                        .pointerInput(Unit) { detectDragGestures { change, drag -> change.consume(); bubbleOffset += drag } },
-                    contentAlignment = Alignment.Center
-                ) {
-                    AnimatedContent(targetState = state, label = "avatar-expression") { current ->
-                        Text(when (current) { "LISTENING" -> "◉"; "THINKING" -> "◌"; "SPEAKING" -> "◉"; else -> "☺" }, color = Neon, fontSize = 58.sp)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.weight(1f).height(220.dp)
+                            .background(Brush.radialGradient(listOf(Color(0xFF35101E), Color(0xFF10080D), Void)), RoundedCornerShape(18.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        BobbyHumanAvatar(avatarLook, Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 5.dp), active = state != "IDLE")
+                        Text(state, Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp), color = Neon, style = MaterialTheme.typography.labelSmall)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { avatarStudioOpen = true }, colors = ButtonDefaults.buttonColors(containerColor = Neon)) { Text("STYLE") }
+                        OutlinedButton(onClick = {
+                            val next = avatarLook.copy(outfit = kotlin.random.Random.nextInt(0, 1000), lastChangeMillis = System.currentTimeMillis())
+                            avatarLook = next; avatarStore.save(next)
+                        }) { Text("RANDOM") }
                     }
                 }
-                Text(state, color = Neon, style = MaterialTheme.typography.labelSmall)
+                if (avatarStudioOpen) {
+                    BobbyAvatarCustomizer(avatarLook, onSave = { avatarLook = it; avatarStore.save(it) }, onClose = { avatarStudioOpen = false })
+                }
                 Spacer(Modifier.height(10.dp))
                 LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
                     items(chat) { line ->
