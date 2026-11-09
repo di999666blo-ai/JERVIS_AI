@@ -40,42 +40,14 @@ class BobbyAvatarStore(context: Context) {
 private val bobbyColours = listOf(Color(0xFFE85D75),Color(0xFF8E44AD),Color(0xFF2878B5),Color(0xFF168A72),Color(0xFFE08B32),Color(0xFF343A52),Color(0xFFB13B62),Color(0xFF6B7D35),Color(0xFF252525),Color(0xFFE8D7C5))
 private val bobbyHair = listOf(Color(0xFF211713),Color(0xFF4B2A1B),Color(0xFF8B542E),Color(0xFF171717),Color(0xFFB77B42),Color(0xFF5B344A),Color(0xFF292B46),Color(0xFFD6B36A),Color(0xFF6E6E6E),Color(0xFF9A3C35))
 
-/** Lightweight full-body human-like 2D avatar with continuous idle motion, blink and expression variants. */
+/** Native OpenGL ES 2.0 full-body 3D avatar. Android 8+ supports this renderer. */
 @Composable
 fun BobbyHumanAvatar(look: BobbyAvatarLook, modifier: Modifier = Modifier, active: Boolean = true) {
-    val motion = rememberInfiniteTransition(label = "bobby-human")
-    val bob by motion.animateFloat(-3f,3f,infiniteRepeatable(tween(1500,easing=FastOutSlowInEasing),RepeatMode.Reverse),label="bob")
-    val sway by motion.animateFloat(-1.5f,1.5f,infiniteRepeatable(tween(2100,easing=FastOutSlowInEasing),RepeatMode.Reverse),label="sway")
-    val blink by motion.animateFloat(0f,1f,infiniteRepeatable(tween(110,delayMillis=2600),RepeatMode.Reverse),label="blink")
-    Canvas(modifier) {
-        val s = minOf(size.width/180f,size.height/300f); val cx=size.width/2
-        fun px(v:Float)=cx+(v-90f)*s+sway*s
-        fun py(v:Float)=v*s+bob*s
-        fun box(l:Float,t:Float,r:Float,b:Float,c:Color,rad:Float=7f) {
-            drawRoundRect(c,Offset(px(l),py(t)),Size((r-l)*s,(b-t)*s),androidx.compose.ui.geometry.CornerRadius(rad*s))
-        }
-        val skin=Color(0xFFE9B99E); val top=bobbyColours[look.outfit%10]
-        val lower=bobbyColours[(look.outfit/10)%10]; val shoes=bobbyColours[(look.outfit/100)%10]
-        val hair=bobbyHair[look.hair.coerceIn(0,9)]
-        box(65f,188f,85f,260f,lower); box(95f,188f,115f,260f,lower)
-        box(58f,254f,88f,270f,shoes); box(92f,254f,122f,270f,shoes)
-        val swing=if(active) bob*1.4f else 0f
-        val arms=Path().apply { moveTo(px(61f),py(112f)); quadraticTo(px(48f-swing),py(155f),px(55f-swing),py(183f)); moveTo(px(119f),py(112f)); quadraticTo(px(132f+swing),py(155f),px(125f+swing),py(183f)) }
-        drawPath(arms,skin,style=Stroke(12f*s,cap=StrokeCap.Round))
-        box(78f,87f,102f,112f,skin); box(58f,105f,122f,195f,top,17f)
-        box(82f,105f,98f,119f,Color(0xFFF1D8CF),4f); box(88f,130f,92f,177f,Color.White.copy(alpha=.25f),2f)
-        drawCircle(skin,31f*s,Offset(px(90f),py(64f)))
-        drawOval(hair,Offset(px(59f),py(31f)),Size(62f*s,32f*s))
-        when(look.hair%5) { 1->box(57f,25f,123f,43f,hair,13f); 2->{box(55f,34f,67f,92f,hair);box(113f,34f,125f,92f,hair)}; 3->box(65f,20f,115f,39f,hair); 4->{box(58f,27f,122f,39f,hair);box(83f,15f,98f,33f,hair)} }
-        val e=look.expression.coerceIn(0,99); val eyeY=62f+((e/10)%3-1)*2f
-        val eyeH=if(blink>.92f)1.2f else 4f+(e%5)
-        drawOval(Color(0xFF30201D),Offset(px(71f),py(eyeY)),Size((3f+e%3)*s,eyeH*s))
-        drawOval(Color(0xFF30201D),Offset(px(106f),py(eyeY)),Size((3f+e%3)*s,eyeH*s))
-        val brows=Path().apply { moveTo(px(68f),py(52f+e%4)); quadraticTo(px(77f),py(48f-e%3),px(82f),py(53f)); moveTo(px(98f),py(53f)); quadraticTo(px(106f),py(48f-e%3),px(112f),py(52f+e%4)) }
-        drawPath(brows,hair,style=Stroke(2f*s,cap=StrokeCap.Round))
-        val mouth=Path().apply { moveTo(px(80f),py(79f)); quadraticTo(px(90f),py(83f+((e%9)-4)*1.1f),px(100f),py(79f)) }
-        drawPath(mouth,Color(0xFF8E4548),style=Stroke(1.8f*s,cap=StrokeCap.Round))
-    }
+    androidx.compose.ui.viewinterop.AndroidView(
+        modifier = modifier,
+        factory = { context -> Bobby3DHumanView(context, look, active) },
+        update = { view -> view.updateLook(look, active) }
+    )
 }
 
 @Composable
