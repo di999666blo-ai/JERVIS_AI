@@ -34,7 +34,7 @@ class BobbyNeuralVoice(private val context: Context) {
                     val form = buildString {
                         append("--$boundary\r\nContent-Disposition: form-data; name=\"voice_profile_id\"\r\n\r\n$profileId\r\n")
                         append("--$boundary\r\nContent-Disposition: form-data; name=\"text\"\r\n\r\n${text.take(3500)}\r\n")
-                        append("--$boundary\r\nContent-Disposition: form-data; name=\"language\"\r\n\r\nen\r\n")
+                        append("--$boundary\r\nContent-Disposition: form-data; name=\"language\"\r\n\r\n${detectXttsLanguage(text)}\r\n")
                         append("--$boundary\r\nContent-Disposition: form-data; name=\"save_to_library\"\r\n\r\nfalse\r\n")
                         append("--$boundary--\r\n")
                     }.toByteArray(Charsets.UTF_8)
@@ -106,6 +106,35 @@ class BobbyNeuralVoice(private val context: Context) {
             } catch (_: Exception) {
                 main.post { onFallback?.invoke() }
             } finally { connection?.disconnect() }
+        }
+    }
+
+    /**
+     * XTTS v2 only accepts its published language set. Script detection is reliable
+     * for non-Latin scripts; Latin-language detection uses conservative common-word
+     * hints and defaults to English. Nigerian Pidgin is sent as English. Yoruba,
+     * Igbo and Hausa are not natively supported by XTTS v2 and must use Android TTS
+     * or a different multilingual speech provider.
+     */
+    private fun detectXttsLanguage(text: String): String {
+        val value = text.lowercase()
+        return when {
+            value.any { it in '\\u0600'..'\\u06ff' } -> "ar"
+            value.any { it in '\\u4e00'..'\\u9fff' } -> "zh-cn"
+            value.any { it in '\\u3040'..'\\u30ff' } -> "ja"
+            value.any { it in '\\uac00'..'\\ud7af' } -> "ko"
+            value.any { it in '\\u0400'..'\\u04ff' } -> "ru"
+            value.contains(Regex("[áéíóúñ¿¡]")) || listOf("hola ", "gracias", " por favor", " buenos días").any(value::contains) -> "es"
+            value.contains(Regex("[àâçèêëîïôùûüÿœ]")) || listOf("bonjour", "merci", " je ", " vous ", " avec ").any(value::contains) -> "fr"
+            value.contains(Regex("[ãõ]")) || listOf(" obrigado", "obrigada", " você ", " não ", " olá").any(value::contains) -> "pt"
+            listOf(" der ", " die ", " das ", " und ", " bitte ").any(value::contains) -> "de"
+            listOf(" ciao", " grazie", " per favore").any(value::contains) -> "it"
+            listOf(" merhaba", " teşekkür", " lütfen").any(value::contains) -> "tr"
+            listOf(" hallo", " dank je", " alsjeblieft").any(value::contains) -> "nl"
+            listOf(" dzień", " dziękuję", " proszę").any(value::contains) -> "pl"
+            listOf(" szia", " köszönöm").any(value::contains) -> "hu"
+            listOf(" ahoj", " děkuji").any(value::contains) -> "cs"
+            else -> "en"
         }
     }
 
