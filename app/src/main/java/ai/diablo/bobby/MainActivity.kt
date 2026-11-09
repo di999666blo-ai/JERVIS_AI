@@ -248,6 +248,11 @@ private fun BobbyHome(
     var customPluginName by remember { mutableStateOf("") }
     var customPluginUrl by remember { mutableStateOf("") }
     var pluginSearchDraft by remember { mutableStateOf("") }
+    var publicApiSearchDraft by remember { mutableStateOf("") }
+    val publicApiCatalog = remember { BobbyPublicApiCatalog(appContext) }
+    var publicApiEntries by remember { mutableStateOf(publicApiCatalog.cachedEntries()) }
+    var publicApiBusy by remember { mutableStateOf(false) }
+    var publicApiStatus by remember { mutableStateOf(if (publicApiEntries.isEmpty()) "Catalogue not downloaded yet." else "Cached catalogue ready • " + publicApiEntries.size + " entries") }
     val pluginStore = remember { BobbyPluginStore(appContext) }
     var derivAppId by remember { mutableStateOf("") }
     var derivToken by remember { mutableStateOf("") }
@@ -826,6 +831,36 @@ private fun BobbyHome(
                                 val visiblePlugins = pluginStore.search(pluginSearchDraft)
                                 Text("${visiblePlugins.size} MATCHING INTEGRATIONS • ${pluginStore.catalog.size} LISTED", color = Neon)
                                 Text("Catalogue entries are discovery listings, not proof of a working connection. Each provider needs its own adapter and authorisation.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                Divider(color = Neon.copy(alpha = 0.45f))
+                                Text("PUBLIC API EXPLORER", color = Neon, style = MaterialTheme.typography.titleMedium)
+                                Text("Browse the community API directory. BOBBY imports API descriptions and documentation links only; it does not automatically call every listed service.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                OutlinedTextField(value = publicApiSearchDraft, onValueChange = { publicApiSearchDraft = it.take(100) }, label = { Text("Search APIs, topics or categories") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    OutlinedButton(enabled = !publicApiBusy, onClick = {
+                                        publicApiBusy = true
+                                        publicApiStatus = "Downloading and validating the upstream directory…"
+                                        publicApiCatalog.refresh { result ->
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                publicApiBusy = false
+                                                result.onSuccess { count -> publicApiEntries = publicApiCatalog.cachedEntries(); publicApiStatus = "UPDATED • " + count + " API listings imported" }
+                                                    .onFailure { publicApiEntries = publicApiCatalog.cachedEntries(); publicApiStatus = "REFRESH FAILED • Keeping cached catalogue. " + it.message.orEmpty() }
+                                            }
+                                        }
+                                    }) { Text(if (publicApiBusy) "UPDATING…" else "REFRESH DIRECTORY") }
+                                    TextButton(onClick = { runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/public-apis/public-apis"))) } }) { Text("SOURCE", color = Neon) }
+                                }
+                                Text(publicApiStatus, color = Neon, style = MaterialTheme.typography.labelSmall)
+                                val matchingPublicApis = publicApiCatalog.search(publicApiSearchDraft, limit = 30)
+                                Text(matchingPublicApis.size.toString() + " MATCHING RESULTS SHOWN • " + publicApiEntries.size + " CACHED LISTINGS", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                matchingPublicApis.forEach { api ->
+                                    Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(10.dp)).padding(9.dp)) {
+                                        Text(api.name, color = Color.White, style = MaterialTheme.typography.titleSmall)
+                                        Text(api.category + " • Auth: " + api.auth + " • HTTPS: " + api.https + " • CORS: " + api.cors, color = Neon, style = MaterialTheme.typography.labelSmall)
+                                        Text(api.description, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                                        TextButton(onClick = { runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(api.documentationUrl))) } }) { Text("OPEN OFFICIAL DOCUMENTATION", color = Neon) }
+                                    }
+                                }
+                                if (publicApiEntries.isEmpty()) Text("Tap REFRESH DIRECTORY to download the catalogue. Internet access is required.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                 Text("AVAILABLE CONNECTORS", color = Neon)
                                 visiblePlugins.forEach { plugin ->
                                     Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(12.dp)).padding(10.dp)) {
