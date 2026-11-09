@@ -37,7 +37,7 @@ class BobbyUpdateManager(private val context: Context) {
             val installed = if (Build.VERSION.SDK_INT >= 28) {
                 context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
             } else @Suppress("DEPRECATION") context.packageManager.getPackageInfo(context.packageName, 0).versionCode.toLong()
-            val latestCode = asset.optLong("version_code", -1L)
+            val latestCode = Regex("""(?i)Version code:\s*(\d+)""").find(json.optString("body"))?.groupValues?.get(1)?.toLongOrNull() ?: -1L
             if (latestCode > 0L && latestCode <= installed) error("BOBBY is already up to date.")
             return BobbyUpdateInfo(version, asset.getString("browser_download_url"), asset.optString("digest").takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:"))
         }
