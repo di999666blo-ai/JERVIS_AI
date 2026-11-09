@@ -148,6 +148,10 @@ attach_sphere("Mouth",(0,0.205,2.00),(0.06,0.018,0.018),trim,"mouth_ctrl")
 def action(name, frames):
     bpy.context.view_layer.objects.active=arm
     arm.select_set(True)
+    if arm.animation_data is None:
+        arm.animation_data_create()
+    new_action = bpy.data.actions.new(name)
+    arm.animation_data.action = new_action
     bpy.ops.object.mode_set(mode="POSE")
     bpy.ops.pose.select_all(action="DESELECT")
     for bone_name, keys in frames.items():
@@ -161,6 +165,10 @@ def action(name, frames):
     act=arm.animation_data.action
     act.name=name
     act.use_fake_user=True
+    track=arm.animation_data.nla_tracks.new()
+    track.name=name
+    strip=track.strips.new(name, int(act.frame_range[0]), act)
+    strip.name=name
     return act
 
 action("BOBBY_Idle", {
@@ -188,10 +196,12 @@ action("BOBBY_Sit", {
 arm.animation_data.action=bpy.data.actions.get("BOBBY_Idle")
 bpy.ops.object.select_all(action="DESELECT")
 arm.select_set(True)
+for child in arm.children:
+    child.select_set(True)
 bpy.context.view_layer.objects.active=arm
 bpy.ops.export_scene.gltf(
     filepath=OUT, export_format="GLB", use_selection=True,
-    export_animations=True, export_nla_strips=False,
+    export_animations=True, export_nla_strips=True,
     export_skins=True, export_morph=True,
 )
 print("Exported rigged BOBBY prototype:", OUT)
