@@ -156,3 +156,15 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 
 - Creative Studio source file commit: `488fc2ef0b8875891d538dbddf3ebaf5ac6be7e3` (branch `bobby-development`). Dashboard and plugin catalogue integration commits: `6bfaee59879c77fa43688f3dfdf1605462eb99fd` and `3afbf1a00020867b5b9ea6a162a090e92f656575`.
 - GitHub combined status query returned no checks at verification time; this is not evidence of a successful build. The Android Actions workflow is configured to build on pushes to `bobby-development`, but its result and APK artifact have not yet been confirmed.
+
+
+## 2026-11-09 — Custom BOBBY voice cloning (implementation added; build and provider tests pending)
+- Added an in-app CUSTOM BOBBY VOICE dialog and audio-file picker to the existing dashboard.
+- Added ElevenLabs Instant Voice Cloning integration using the documented `POST /v1/voices/add` multipart endpoint. The user must affirm ownership or explicit speaker permission before uploading a sample.
+- ElevenLabs API key and cloned voice ID are stored encrypted using the existing Android Keystore-backed `BobbySecretVault`.
+- Updated speech output to prefer the selected cloned ElevenLabs voice (`/v1/text-to-speech/{voice_id}`), then fall back to the existing OpenAI neural voice, then Android system TTS.
+- Added a preview button and local disconnect/clear action. Clearing local settings does not delete the remote ElevenLabs voice from the provider account.
+- No additional APK is required. An ElevenLabs account/API key is still required, and cloning/speech use is subject to the provider's plan, limits and possible charges. The recording is uploaded to ElevenLabs; it is not cloned entirely on-device.
+- No provider key is bundled. API key storage is encrypted on the phone.
+- Source commits: voice clone UI/connector `ce7a23fddc1c49a16ff054b2f264da0ba499b7bc`, neural speech routing `104951c6d16cd665e1eb4777c23c0417a7e34b03`, dashboard entry `ebbef4c46663cfbdbb56a4ee9f9f7c4a95c7262f`.
+- Build, live API calls and physical Android-device verification are still pending. Do not treat this feature as tested until the APK is built and exercised with a valid provider key and permitted audio sample.
