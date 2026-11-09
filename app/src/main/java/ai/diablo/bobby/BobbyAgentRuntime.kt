@@ -38,6 +38,7 @@ class BobbyAgentRuntime(context: Context) {
         BobbyAgentTool("public_api_catalog", "Search public API directory", "Catalogue UI is implemented; planner-to-catalogue execution is not yet wired.", false, false),
         BobbyAgentTool("web_search", "Web research", "Uses a configured search provider; requires provider credentials.", false, false),
         BobbyAgentTool("dexter_financial_research", "Dexter financial research", "Runs multi-pass financial source gathering and AI analysis through BOBBY; requires a connected search provider and AI model.", false, true),
+        BobbyAgentTool("trader_skill_pack", "Trader Skill Pack", "Runs one of 11 AI-guided trading research, portfolio, budgeting and risk workflows. Analysis only; no broker execution.", false, true),
         BobbyAgentTool("github", "GitHub operations", "Requires a connected GitHub token and per-action confirmation.", true, false),
         BobbyAgentTool("plugin_adapter", "Connected plugins", "Only real, connected adapters may execute; catalogue entries are not tools.", true, false),
         BobbyAgentTool("apk_update", "Update BOBBY", "Checks the official GitHub release, verifies the APK digest when available, and hands installation to Android for user approval.", true, true)
