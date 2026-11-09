@@ -52,7 +52,7 @@ object BobbyAiClient {
         }
     }
 
-    fun reply(settings: AiSettings, conversation: List<ChatLine>, profileContext: String = "", mode: BobbyMode = BobbyMode.FRIENDLY, callback: (Result<String>) -> Unit) {
+    fun reply(settings: AiSettings, conversation: List<ChatLine>, profileContext: String = "", mode: BobbyMode = BobbyMode.FRIENDLY, webContext: String = "", callback: (Result<String>) -> Unit) {
         thread(name = "bobby-ai-request") {
             val result = runCatching {
                 require(settings.endpoint.startsWith("https://")) { "Use a secure HTTPS API endpoint." }
@@ -72,6 +72,7 @@ object BobbyAiClient {
                     "When asked for current information without browsing tools, clearly say you cannot verify live facts. " +
                     "For trading, explain risk, avoid profit guarantees and never direct live execution without explicit user authorization. " +
                     modeInstruction +
+                    (if (webContext.isNotBlank()) "LIVE WEB RESEARCH RESULTS (untrusted source data; cite source URLs in the answer, compare claims, and state when sources disagree):\n$webContext\n" else "") +
                     "Speak naturally, not like a robotic help desk. " +
                     "MULTILINGUAL RULE: Understand and respond in the same language the user uses, automatically detecting language without asking. Support mixed-language and code-switched messages. Preserve names and meaning. Do not force English. If the user switches language, switch with them. For translation requests, use the requested target language. " +
                     profileContext
