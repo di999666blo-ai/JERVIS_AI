@@ -403,6 +403,15 @@ private fun BobbyHome(
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't set that alarm: " + (error.message ?: "unknown error"))); onSpeak("I couldn't set that alarm."); return
             }
         }
+        if (Regex("""(?i)^\s*(?:bobby[, ]+)?(?:read|describe)\s+(?:my\s+)?screen\s*$""").matches(clean)) {
+            val screenText = BobbyAccessibilityController.readVisibleText()
+            val reply = when {
+                !BobbyAccessibilityController.isEnabledAndConnected() -> "Screen reading needs BOBBY phone interaction to be enabled in Android Accessibility settings."
+                screenText.isBlank() -> "I couldn't read accessible text on this screen. Some apps draw their content in a way Android accessibility cannot expose."
+                else -> "Here's the visible text I can access: " + screenText.take(1400)
+            }
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+        }
         val accessibilityCommand = Regex("""(?i)^\s*(?:bobby[, ]+)?(click|tap)\s+(.{1,60})$""").find(clean)
         if (accessibilityCommand != null) {
             val target = accessibilityCommand.groupValues[2].trim().trim('"', '\'')
