@@ -238,7 +238,7 @@ private fun BobbyHome(
     val chat = remember(activeMode) {
         mutableStateListOf<ChatLine>().apply {
             addAll(modeStore.loadHistory(activeMode))
-            if (isEmpty()) add(ChatLine(true, if (activeMode == BobbyMode.FRIENDLY) "Hey, I’m Bobby. Friendly Mode is ready. 😊" else "DARK MODE ACTIVE • Privacy-focused research workspace. Tor is not automatically routing BOBBY traffic."))
+            if (isEmpty()) add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. Friendly Mode is ready. 😊"; BobbyMode.WORKING -> "BOBBY WORK MODE READY • Let’s organise tasks, projects, documents and focused work."; BobbyMode.DARK -> "DARK MODE ACTIVE • Privacy-focused research workspace. Tor Browser does not route BOBBY traffic." }))
         }
     }
     LaunchedEffect(activeMode, chat.size) { modeStore.saveHistory(activeMode, chat.toList()) }
@@ -725,35 +725,47 @@ private fun BobbyHome(
                 }
                 Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("BOBBY OPERATING MODE", color = Neon, style = MaterialTheme.typography.labelLarge)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Button(onClick = {
                             if (activeMode != BobbyMode.FRIENDLY) {
                                 modeStore.saveHistory(activeMode, chat.toList())
                                 modeStore.setMode(BobbyMode.FRIENDLY)
                                 activeMode = BobbyMode.FRIENDLY
                             }
-                        }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.FRIENDLY) Neon else Color(0xFF30232A))) { Text("🟢 FRIENDLY MODE") }
+                        }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.FRIENDLY) Neon else Color(0xFF30232A))) { Text("FRIENDLY", fontSize = 11.sp) }
+                        Button(onClick = {
+                            if (activeMode != BobbyMode.WORKING) {
+                                modeStore.saveHistory(activeMode, chat.toList())
+                                modeStore.setMode(BobbyMode.WORKING)
+                                activeMode = BobbyMode.WORKING
+                            }
+                        }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.WORKING) Neon else Color(0xFF30232A))) { Text("WORK", fontSize = 11.sp) }
                         Button(onClick = {
                             if (activeMode != BobbyMode.DARK) {
                                 modeStore.saveHistory(activeMode, chat.toList())
                                 modeStore.setMode(BobbyMode.DARK)
                                 activeMode = BobbyMode.DARK
                             }
-                        }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.DARK) Neon else Color(0xFF30232A))) { Text("🔴 DARK MODE") }
+                        }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.DARK) Neon else Color(0xFF30232A))) { Text("DARK", fontSize = 11.sp) }
                     }
-                    Text(if (activeMode == BobbyMode.FRIENDLY) "Everyday assistant • work • learning • normal web research • standard integrations" else "Privacy research workspace • Tor Browser launcher • separate chat history • safety and network limits apply", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+                    Text(when (activeMode) {
+                        BobbyMode.FRIENDLY -> "Everyday companion • conversations • learning • planning"
+                        BobbyMode.WORKING -> "Focused work • projects • research • writing • task planning"
+                        BobbyMode.DARK -> "Privacy workspace • separate chat history • Tor Browser launcher"
+                    }, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                     if (activeMode == BobbyMode.DARK) {
-                        Text("IMPORTANT: Only Tor Browser traffic uses Tor. BOBBY's AI/API calls and other phone apps are not routed through Tor.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
+                        Text("PRIVACY FACT: Tor Browser protects browsing inside Tor Browser only. BOBBY's AI/API requests, Android apps, DNS and other network traffic are not automatically routed through Tor. No app can promise that you are untraceable.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
+                        Text("For stronger privacy: keep BOBBY updated, use HTTPS services, avoid entering identifying accounts in private sessions, do not install unknown APKs, and clear this mode's chat history when appropriate. Your network provider may still see that you connect to Tor.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = {
                             val launch = appContext.packageManager.getLaunchIntentForPackage("org.torproject.torbrowser")
                             if (launch != null) runCatching { appContext.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                            else runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.torbrowser"))) }
-                        }, modifier = Modifier.fillMaxWidth()) { Text("OPEN / INSTALL TOR BROWSER") }
+                            else runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.torproject.org/download/")))
+                        }, modifier = Modifier.fillMaxWidth()) { Text("OPEN / INSTALL OFFICIAL TOR BROWSER") }
                     }
                     TextButton(onClick = {
                         modeStore.clearHistory(activeMode)
                         chat.clear()
-                        chat.add(ChatLine(true, if (activeMode == BobbyMode.FRIENDLY) "Friendly Mode history cleared." else "Dark Mode session history cleared."))
+                        chat.add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Friendly Mode history cleared."; BobbyMode.WORKING -> "Work Mode history cleared."; BobbyMode.DARK -> "Dark Mode history cleared." }))
                     }) { Text("CLEAR THIS MODE'S HISTORY", color = Neon) }
                 }
                 Spacer(Modifier.height(6.dp))
