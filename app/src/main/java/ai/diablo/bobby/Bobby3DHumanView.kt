@@ -156,7 +156,7 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         if (topStyle % 2 == 0) part(0f,1.36f+bob,0.27f,0.34f,0.025f,0.02f,trim,0f,sway)
         // Small animated side panels add a restrained cloth-like secondary motion.
         val clothFlutter = sin(t * 2.6f + 0.7f) * 4.5f
-        if (outfitStyle == 0 || outfitStyle == 2 || outfitStyle == 4) {
+        if (bottomStyle == 0 || bottomStyle == 2 || bottomStyle == 4) {
             part(-0.31f,1.04f + bob,0.12f,0.075f,0.22f,0.055f,lower,0f,-clothFlutter)
             part(0.31f,1.04f + bob,0.12f,0.075f,0.22f,0.055f,lower,0f,clothFlutter)
         }
