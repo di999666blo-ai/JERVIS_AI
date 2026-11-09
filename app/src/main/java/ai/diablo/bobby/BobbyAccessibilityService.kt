@@ -77,6 +77,30 @@ class BobbyAccessibilityService : AccessibilityService() {
         }
     }
 
+    internal fun readVisibleText(): String {
+        val root = rootInActiveWindow ?: return ""
+        return try {
+            val collected = ArrayList<String>()
+            fun visit(node: AccessibilityNodeInfo) {
+                if (!node.isVisibleToUser) return
+                val text = node.text?.toString()?.trim().orEmpty()
+                val description = node.contentDescription?.toString()?.trim().orEmpty()
+                if (text.isNotBlank()) collected.add(text)
+                else if (description.isNotBlank()) collected.add(description)
+                for (i in 0 until node.childCount) {
+                    val child = node.getChild(i) ?: continue
+                    visit(child)
+                    child.recycle()
+                    if (collected.size >= 120) break
+                }
+            }
+            visit(root)
+            collected.distinct().take(120).joinToString(". ").take(6000)
+        } finally {
+            root.recycle()
+        }
+    }
+
     internal fun scroll(forward: Boolean): Boolean {
         val root = rootInActiveWindow ?: return false
         return try {
@@ -135,6 +159,7 @@ object BobbyAccessibilityController {
         label.isNotBlank() && service?.clickVisibleText(label) == true
     fun enterText(fieldHint: String, value: String): Boolean =
         fieldHint.isNotBlank() && service?.enterText(fieldHint, value) == true
+    fun readVisibleText(): String = service?.readVisibleText().orEmpty()
     fun scrollDown(): Boolean = service?.scroll(true) == true
     fun scrollUp(): Boolean = service?.scroll(false) == true
     fun tap(x: Float, y: Float): Boolean = service?.tap(x, y) == true
