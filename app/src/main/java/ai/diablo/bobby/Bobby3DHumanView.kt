@@ -96,9 +96,17 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         val shoes = palette[(current.outfit / 100) % 10]
         val hair = hairPalette[current.hair.coerceIn(0,9)]
         val skin = 0xFFE9B99E.toInt()
+        val bustScale = 0.78f + current.bustSize.coerceIn(1,10) * 0.075f
+        val outfitStyle = (current.outfit / 10) % 5
         // Legs and shoes
         part(-0.25f,0.72f,0f,0.17f,0.58f,0.19f,lower,bob)
         part(0.25f,0.72f,0f,0.17f,0.58f,0.19f,lower,bob)
+        // A separate lower-garment layer changes silhouette by generated style.
+        if (outfitStyle % 2 == 0) {
+            part(0f,1.02f,0.012f,0.43f,0.25f,0.255f,lower,bob)
+        } else {
+            part(0f,1.12f,0.012f,0.36f,0.17f,0.245f,lower,bob)
+        }
         part(-0.27f,0.12f,0.12f,0.22f,0.12f,0.34f,shoes,bob)
         part(0.27f,0.12f,0.12f,0.22f,0.12f,0.34f,shoes,bob)
         // Arms, hands and torso
@@ -110,14 +118,25 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         // Adult feminine silhouette: shaped waist and a fuller, clothed bust.
         // These are garment-coloured mesh forms, not exposed anatomy.
         part(0f,1.48f + bob,0f,0.39f,0.62f,0.245f,top,0f,sway)
-        part(-0.19f,1.72f + bob,0.205f,0.245f,0.235f,0.16f,top,0f,sway)
-        part(0.19f,1.72f + bob,0.205f,0.245f,0.235f,0.16f,top,0f,sway)
+        part(-0.19f,1.72f + bob,0.205f,0.245f*bustScale,0.235f,0.16f*bustScale,top,0f,sway)
+        part(0.19f,1.72f + bob,0.205f,0.245f*bustScale,0.235f,0.16f*bustScale,top,0f,sway)
+        // Optional fashion details: jacket panels or a waist belt, depending on style.
+        if (outfitStyle == 1 || outfitStyle == 3) {
+            part(-0.31f,1.58f + bob,0.19f,0.055f,0.34f,0.075f,lower,0f,sway)
+            part(0.31f,1.58f + bob,0.19f,0.055f,0.34f,0.075f,lower,0f,sway)
+        } else if (outfitStyle == 2 || outfitStyle == 4) {
+            part(0f,1.36f + bob,0.245f,0.34f,0.045f,0.035f,shoes,0f,sway)
+        }
         // Subtle fitted-waist panel keeps the silhouette readable in 3D.
         part(0f,1.27f + bob,0.012f,0.325f,0.22f,0.235f,top,0f,sway)
         part(0f,2.13f + bob,0f,0.13f,0.18f,0.13f,skin)
         // Head and hair cap
         part(0f,2.52f + bob,0f,0.36f,0.43f,0.31f,skin,0f,sway)
         part(0f,2.82f + bob,-0.01f,0.37f,0.18f,0.33f,hair,0f,sway)
+        // Long hair panels hang behind the shoulders; variation controls their width.
+        val hairLength = 0.38f + (current.hair % 5) * 0.12f
+        part(-0.29f,2.28f - hairLength*0.34f + bob,-0.19f,0.105f,hairLength,0.12f,hair,0f,-0.04f)
+        part(0.29f,2.28f - hairLength*0.34f + bob,-0.19f,0.105f,hairLength,0.12f,hair,0f,0.04f)
         part(-0.12f,2.55f + bob,0.285f,0.035f,0.045f,0.025f,0xFF30201D.toInt())
         part(0.12f,2.55f + bob,0.285f,0.035f,0.045f,0.025f,0xFF30201D.toInt())
         val expression = current.expression
