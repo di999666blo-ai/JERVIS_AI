@@ -304,6 +304,7 @@ private fun BobbyHome(
     var voiceCloneOpen by remember { mutableStateOf(false) }
     var integrationsOpen by remember { mutableStateOf(false) }
     var dexterOpen by remember { mutableStateOf(false) }
+    var traderSkillsOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
     var webQuery by remember { mutableStateOf("") }
@@ -709,6 +710,7 @@ private fun BobbyHome(
                         TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
                         TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
                         TextButton(onClick = { dexterOpen = true }) { Text("DEXTER FINANCIAL RESEARCH", color = Neon) }
+                        TextButton(onClick = { traderSkillsOpen = true }) { Text("TRADER SKILLS • 11 TOOLS", color = Neon) }
                         TextButton(onClick = { creativeStudioOpen = true }) { Text("CREATIVE STUDIO", color = Neon) }
                         TextButton(onClick = { robot3dOpen = true }) { Text("3D ROBOT", color = Neon) }
                         TextButton(onClick = { voiceCloneOpen = true }) { Text("CUSTOM BOBBY VOICE", color = Neon) }
@@ -1348,6 +1350,15 @@ private fun BobbyHome(
                         onDismiss = { dexterOpen = false },
                         onAnalyse = { prompt ->
                             dexterOpen = false
+                            send(prompt)
+                        }
+                    )
+                }
+                if (traderSkillsOpen) {
+                    BobbyTraderSkillPackDialog(
+                        onDismiss = { traderSkillsOpen = false },
+                        onRunSkill = { prompt ->
+                            traderSkillsOpen = false
                             send(prompt)
                         }
                     )
