@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 onAskOffline = { prompt, done -> offlineAi.reply(prompt, done) },
                 onTestOffline = { done -> offlineAi.reply("Reply exactly: BOBBY OFFLINE MODEL TEST PASSED.", done) },
                 onAskAiWithImage = { history, path, done ->
-                    BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> runOnUiThread { done(result) } }
+                    BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> hostActivity?.runOnUiThread { done(result) } }
                 },
                 onAskAi = askAi@{ history, done ->
                     val latestUserMessage = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
@@ -219,6 +219,7 @@ private fun BobbyHome(
     onAskAiWithImage: (List<ChatLine>, String, (Result<String>) -> Unit) -> Unit
 ) {
     val appContext = LocalContext.current
+    val hostActivity = appContext as? ComponentActivity
     val modeStore = remember { BobbyModeStore(appContext) }
     var activeMode by remember { mutableStateOf(modeStore.mode()) }
     val chat = remember(activeMode) {
@@ -1097,8 +1098,8 @@ private fun BobbyHome(
                         confirmButton = {
                             Row {
                                 TextButton(enabled = !updateBusy, onClick = {
-                                    if (android.os.Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
-                                        startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                                    if (android.os.Build.VERSION.SDK_INT >= 26 && hostActivity?.packageManager?.canRequestPackageInstalls() != true) {
+                                        appContext.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${appContext.packageName}")))
                                         updateStatus = "Allow BOBBY to install updates, return here, then check again."
                                     } else {
                                         updateBusy = true
