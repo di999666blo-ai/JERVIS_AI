@@ -53,7 +53,7 @@ class BobbyMemoryStore(context: Context) {
     fun rememberFromMessage(message: String): BobbyMemory? {
         val match = Regex("(?is)^\\s*(?:bobby[, ]+)?(?:please\\s+)?remember\\s+(?:this|that|the following)?\\s*[:,-]?\\s*(.+?)\\s*$")
             .matchEntire(message) ?: return null
-        val raw = match.groupValues[1].trim().trim('"', '\\'', ' ')
+        val raw = match.groupValues[1].trim().trim('"', ' ')
         if (raw.length < 3 || raw.equals("this", true) || raw.equals("that", true)) return null
         val category = when {
             Regex("(?i)\\b(project|app|repository|github|build|code|feature)\\b").containsMatchIn(raw) -> "Projects"
@@ -66,9 +66,11 @@ class BobbyMemoryStore(context: Context) {
         return save(category, title, raw)
     }
     fun search(query: String): List<BobbyMemory> {
-        val q = query.trim()
-        if (q.isEmpty()) return list()
-        return list().filter { it.title.contains(q, true) || it.content.contains(q, true) || it.category.contains(q, true) }
+        val terms = query.trim().split(Regex("\\s+")).filter { it.length >= 3 }.distinct()
+        if (terms.isEmpty()) return list()
+        return list().filter { item -> terms.any { term ->
+            item.title.contains(term, true) || item.content.contains(term, true) || item.category.contains(term, true)
+        } }
     }
     fun delete(id: String) = synchronized(lock) { writeAll(readAll().filterNot { it.id == id }) }
     fun clear() = synchronized(lock) { prefs.edit().remove(KEY).apply() }
