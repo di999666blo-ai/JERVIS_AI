@@ -1,6 +1,7 @@
 package ai.diablo.bobby
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -178,7 +179,8 @@ fun BobbyCreativeStudioDialog(onDismiss: () -> Unit, openAiApiKey: String) {
                     FilterChip(selected = tab == "3D", onClick = { tab = "3D" }, label = { Text("3D MODELLER") })
                 }
                 if (tab == "IMAGE") {
-                    Text("OpenAI Images API • Uses the key saved in AI SETTINGS. API billing and model access apply.", style = MaterialTheme.typography.bodySmall)
+                    Text("OpenAI Images API • Uses the OpenAI API key saved in AI SETTINGS. API billing and model access apply.", style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://platform.openai.com/api-keys"))) } }) { Text("OPENAI API KEYS") }
                     OutlinedTextField(value = imagePrompt, onValueChange = { imagePrompt = it.take(4000) }, label = { Text("Describe your image") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("low", "medium", "high").forEach { q ->
@@ -202,6 +204,7 @@ fun BobbyCreativeStudioDialog(onDismiss: () -> Unit, openAiApiKey: String) {
                     }
                 } else {
                     Text("Meshy Text-to-3D • Creates a textured GLB mesh. Meshy account and credits are required.", style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.meshy.ai/api"))) } }) { Text("GET MESHY API ACCESS") }
                     OutlinedTextField(value = meshyKey, onValueChange = { meshyKey = it.take(500) }, label = { Text("Meshy API key") }, singleLine = true, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Button(enabled = meshyKey.isNotBlank(), onClick = {
