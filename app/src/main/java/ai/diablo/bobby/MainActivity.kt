@@ -758,8 +758,11 @@ private fun BobbyHome(
                         Text("For stronger privacy: keep BOBBY updated, use HTTPS services, avoid entering identifying accounts in private sessions, do not install unknown APKs, and clear this mode's chat history when appropriate. Your network provider may still see that you connect to Tor.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = {
                             val launch = appContext.packageManager.getLaunchIntentForPackage("org.torproject.torbrowser")
-                            if (launch != null) runCatching { appContext.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                            else runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.torproject.org/download/")))
+                            if (launch != null) {
+                                runCatching { appContext.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                            } else {
+                                runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.torproject.org/download/"))) }
+                            }
                         }, modifier = Modifier.fillMaxWidth()) { Text("OPEN / INSTALL OFFICIAL TOR BROWSER") }
                     }
                     TextButton(onClick = {
