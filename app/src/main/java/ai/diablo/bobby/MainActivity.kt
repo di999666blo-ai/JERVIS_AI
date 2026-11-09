@@ -730,12 +730,12 @@ private fun BobbyHome(
                         },
                         confirmButton = {
                             TextButton(onClick = {
-                                runCatching { memoryStore.save(memoryCategory, memoryTitle, memoryContent) }
-                                    .onSuccess {
-                                        editingMemoryId?.let { memoryStore.update(it, memoryCategory, memoryTitle, memoryContent) }
-                                            ?: memoryStore.save(memoryCategory, memoryTitle, memoryContent)
-                                        editingMemoryId = null; memoryTitle = ""; memoryContent = ""; memoryItems = memoryStore.list()
-                                    }
+                                runCatching {
+                                    editingMemoryId?.let { memoryStore.update(it, memoryCategory, memoryTitle, memoryContent) }
+                                        ?: memoryStore.save(memoryCategory, memoryTitle, memoryContent)
+                                }.onSuccess {
+                                    editingMemoryId = null; memoryTitle = ""; memoryContent = ""; memoryItems = memoryStore.list()
+                                }
                                     .onFailure { chat.add(ChatLine(true, "Memory was not saved: ${it.message}")) }
                             }) { Text(if (editingMemoryId == null) "SAVE MEMORY" else "UPDATE MEMORY", color = Neon) }
                         },
