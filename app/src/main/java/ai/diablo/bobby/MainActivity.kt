@@ -47,6 +47,7 @@ private val Panel = Color(0xFF171017)
 data class ChatLine(val fromBobby: Boolean, val text: String)
 
 class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
+    private var voiceLaunchToken by androidx.compose.runtime.mutableIntStateOf(0)
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var selectedVoice: Voice? = null
@@ -56,6 +57,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent?.getBooleanExtra(FloatingRobotService.EXTRA_START_VOICE, false) == true) voiceLaunchToken++
         tts = TextToSpeech(this, this)
         neuralVoice = BobbyNeuralVoice(this)
         offlineAi = BobbyOfflineAi(this)
@@ -76,6 +78,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 },
                 onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } },
                 onToggleOverlay = { toggleFloatingRobot() },
+                voiceLaunchToken = voiceLaunchToken,
                 initialEndpoint = configStore.endpoint(),
                 initialModel = configStore.model(),
                 hasSavedKey = configStore.apiKey().isNotBlank(),
@@ -145,6 +148,12 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(FloatingRobotService.EXTRA_START_VOICE, false)) voiceLaunchToken++
+    }
+
     private var floatingRobotRunning = false
 
     private fun toggleFloatingRobot() {
@@ -211,6 +220,7 @@ private fun BobbyHome(
     onSpeak: (String) -> Unit,
     onInstallVoice: () -> Unit,
     onToggleOverlay: () -> Unit,
+    voiceLaunchToken: Int,
     initialEndpoint: String,
     initialModel: String,
     hasSavedKey: Boolean,
@@ -638,6 +648,19 @@ private fun BobbyHome(
         if (!spoken.isNullOrBlank()) send(spoken) else state = "IDLE"
     }
 
+    fun launchVoiceInput() {
+        state = "LISTENING"
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Talk naturally to Bobby")
+        }
+        runCatching { recognizer.launch(intent) }.onFailure { state = "VOICE UNAVAILABLE" }
+    }
+
+    LaunchedEffect(voiceLaunchToken) {
+        if (voiceLaunchToken > 0) launchVoiceInput()
+    }
+
     MaterialTheme(colorScheme = darkColorScheme(background = Void, surface = Panel, primary = Neon, onBackground = Color.White, onSurface = Color.White)) {
         Surface(Modifier.fillMaxSize(), color = Void) {
             Box(Modifier.fillMaxSize()) {
@@ -767,14 +790,7 @@ private fun BobbyHome(
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(modifier = Modifier.weight(1f), onClick = {
-                        state = "LISTENING"
-                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Talk naturally to Bobby")
-                        }
-                        runCatching { recognizer.launch(intent) }.onFailure { state = "VOICE UNAVAILABLE" }
-                    }) { Text("🎙 TALK") }
+                    OutlinedButton(modifier = Modifier.weight(1f), onClick = { launchVoiceInput() }) { Text("🎙 TALK") }
                     OutlinedButton(modifier = Modifier.weight(1f), onClick = onInstallVoice) { Text("⬇ VOICE DATA") }
                 }
                 Text(
