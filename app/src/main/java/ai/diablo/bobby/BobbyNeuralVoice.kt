@@ -50,7 +50,8 @@ class BobbyNeuralVoice(private val context: Context) {
                     require(jobId.isNotBlank()) { "XTTS server returned no generation job ID." }
                     connection.disconnect(); connection = null
                     var completed = false
-                    repeat(120) {
+                    var attempts = 0
+                    while (attempts < 120 && !completed) {
                         Thread.sleep(2000)
                         val statusConnection = URL("$base/generations/$jobId/status").openConnection() as HttpURLConnection
                         val statusJson = try {
@@ -61,10 +62,10 @@ class BobbyNeuralVoice(private val context: Context) {
                             JSONObject(statusRaw)
                         } finally { statusConnection.disconnect() }
                         when (statusJson.optString("status")) {
-                            "completed" -> { completed = true; return@repeat }
+                            "completed" -> completed = true
                             "failed" -> error("XTTS voice generation failed: ${statusJson.optString("error")}")
                         }
-                        if (completed) return@repeat
+                        attempts++
                     }
                     require(completed) { "XTTS generation timed out. Try again or check the server." }
                     val download = (URL("$base/generations/$jobId/audio?format=wav").openConnection() as HttpURLConnection).apply {
