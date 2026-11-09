@@ -214,6 +214,10 @@ fun BobbyCreativeStudioDialog(onDismiss: () -> Unit, openAiApiKey: String) {
                         TextButton(onClick = { connector.removeMeshyKey(); status = "Meshy key removed." }) { Text("DISCONNECT") }
                     }
                     Text(if (connector.hasMeshyKey()) "MESHY CONNECTED • encrypted on device" else "MESHY NOT CONNECTED", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                    OutlinedButton(onClick = {
+                        modelPrompt = "Create a premium full-body 3D female-presenting futuristic AI assistant robot named BOBBY. Original stylized anime-inspired robotic character, elegant friendly face, expressive luminous red eyes, sleek black obsidian and dark gunmetal armor, vivid neon crimson illuminated circuit accents, subtle crown-like headpiece and futuristic headphones, refined humanoid proportions, articulated shoulders elbows wrists hips knees and fingers, polished PBR metal and dark glass materials, clean symmetrical design, standing upright in a confident welcoming pose, complete character including feet, isolated studio presentation, no text, no logo, no extra characters. Game-ready detailed 3D model with clean topology and textured materials."
+                        status = "BOBBY robot design loaded. Tap GENERATE BOBBY ROBOT."
+                    }, modifier = Modifier.fillMaxWidth()) { Text("LOAD BOBBY ROBOT DESIGN") }
                     OutlinedTextField(value = modelPrompt, onValueChange = { modelPrompt = it.take(600) }, label = { Text("Describe 3D object (max 600 characters)") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                     Button(enabled = !busy && connector.hasMeshyKey() && modelPrompt.isNotBlank(), onClick = {
                         busy = true
@@ -225,9 +229,10 @@ fun BobbyCreativeStudioDialog(onDismiss: () -> Unit, openAiApiKey: String) {
                                     .onFailure { status = "3D FAILED • " + it.message }
                             }
                         }
-                    }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "GENERATING 3D…" else "GENERATE 3D MODEL") }
+                    }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "GENERATING 3D…" else if (modelPrompt.contains("named BOBBY")) "GENERATE BOBBY ROBOT" else "GENERATE 3D MODEL") }
                     if (assetPath.isNotBlank()) {
-                        Text("Saved privately: " + File(assetPath).name, style = MaterialTheme.typography.bodySmall)
+                        Text("BOBBY 3D MODEL • " + File(assetPath).name, color = Color(0xFFFF1744), style = MaterialTheme.typography.bodySmall)
+                        BobbyRobot3DPreview(assetPath, Modifier.fillMaxWidth().height(260.dp))
                         Button(onClick = { exportLauncher.launch(File(assetPath).name) }, modifier = Modifier.fillMaxWidth()) { Text("EXPORT GLB FILE") }
                     }
                 }
