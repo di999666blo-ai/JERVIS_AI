@@ -250,6 +250,7 @@ private fun BobbyHome(
     var offlineOpen by remember { mutableStateOf(false) }
     var webResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
+    var robot3dOpen by remember { mutableStateOf(false) }
     var voiceCloneOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
@@ -535,6 +536,7 @@ private fun BobbyHome(
                         TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
                         TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
                         TextButton(onClick = { creativeStudioOpen = true }) { Text("CREATIVE STUDIO", color = Neon) }
+                        TextButton(onClick = { robot3dOpen = true }) { Text("3D ROBOT", color = Neon) }
                         TextButton(onClick = { voiceCloneOpen = true }) { Text("CUSTOM BOBBY VOICE", color = Neon) }
                         TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
                         TextButton(onClick = { screenCaptureLauncher.launch((appContext.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }) { Text("SEE MY SCREEN", color = Neon) }
@@ -1106,6 +1108,9 @@ private fun BobbyHome(
                 }
                 if (creativeStudioOpen) {
                     BobbyCreativeStudioDialog(onDismiss = { creativeStudioOpen = false }, openAiApiKey = BobbyConfigStore(appContext).apiKey())
+                }
+                if (robot3dOpen) {
+                    BobbyRobot3DDialog(onDismiss = { robot3dOpen = false })
                 }
                 if (voiceCloneOpen) {
                     BobbyVoiceCloneDialog(onDismiss = { voiceCloneOpen = false }, onPreview = onSpeak)
