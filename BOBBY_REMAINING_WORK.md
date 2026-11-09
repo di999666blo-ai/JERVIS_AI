@@ -132,3 +132,15 @@ Do not merge to master without the owner's approval.
 - Accessibility actions are text/label based. Coordinate gesture APIs exist in the service but are not yet exposed as natural-language commands.
 - Sensitive action labels are blocked by the current simple keyword guard. This is not a substitute for a complete confirmation framework.
 - No always-on wake word, full-duplex conversation, call audio injection or universal control of third-party apps is implemented.
+
+
+## Avatar implementation update — 9 November 2026
+
+- 🟡 Added `BobbyHumanAvatar.kt`: a lightweight full-body, human-like 2D character with breathing/bobbing, body sway, arm movement and blinking.
+- 🟡 Added 100 procedural facial-expression presets and a wardrobe generator with 1,000 combinations (10 top styles/colours × 10 lower-body styles/colours × 10 shoe styles/colours).
+- 🟡 Added 10 hair style/colour variants, a STYLE customizer, RANDOM outfit control and local persistent preferences.
+- 🟡 Added automatic random outfit selection with a user-configurable 1–168 hour interval and an off switch to preserve one chosen outfit.
+- 🟡 Automatic outfit changes are currently checked while the main BOBBY screen is active; if the app is closed, the change is applied on the next active session. A background WorkManager/AlarmManager scheduler is still required for dependable changes while the app is closed.
+- 🔴 This is a stylised 2D human-like avatar, not a photorealistic 3D human. The requested 1,000 animation patterns are not yet a library of 1,000 authored animation clips; current movement is procedural and lightweight for older Android devices.
+- 🔴 Fine-grained body-part posing, clothing fit/size tailoring, a true 3D rig, and a full 1,000-item asset wardrobe remain future work.
+- Build and device verification are pending for this avatar change. Do not call it tested until CI and physical Android testing pass.
