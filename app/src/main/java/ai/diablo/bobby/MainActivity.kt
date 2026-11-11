@@ -319,6 +319,7 @@ private fun BobbyHome(
     var oauthConnectorOpen by remember { mutableStateOf(false) }
     var offlineOpen by remember { mutableStateOf(false) }
     var webResearchOpen by remember { mutableStateOf(false) }
+    var darkResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
     var image3dStudioOpen by remember { mutableStateOf(false) }
     var robot3dOpen by remember { mutableStateOf(false) }
@@ -362,6 +363,14 @@ private fun BobbyHome(
     var conversationToDelete by remember { mutableStateOf<BobbyConversation?>(null) }
     var renameDraft by remember { mutableStateOf("") }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
+    val torResearch = remember { BobbyTorResearch(appContext) }
+    var torPortDraft by remember { mutableStateOf(torResearch.port().toString()) }
+    var torStatus by remember { mutableStateOf("NOT VERIFIED • Connect Orbot, then verify the SOCKS proxy.") }
+    var torBusy by remember { mutableStateOf(false) }
+    var torAddress by remember { mutableStateOf("") }
+    var torSearchQuery by remember { mutableStateOf("") }
+    var torPage by remember { mutableStateOf<BobbyTorPage?>(null) }
+    var torBookmarks by remember { mutableStateOf(torResearch.bookmarks()) }
     var webQuery by remember { mutableStateOf("") }
     var webKeyDraft by remember { mutableStateOf("") }
     var webStatus by remember { mutableStateOf("Brave Search is not connected.") }
@@ -855,7 +864,10 @@ private fun BobbyHome(
                             }
                         }
                         if (activeMode == BobbyMode.DARK) {
-                            Text("Tor Browser protects browsing inside Tor Browser only. BOBBY's AI/API traffic is not routed through Tor.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(Color(0xFF2A2117)).padding(10.dp))
+                            Column(Modifier.fillMaxWidth().background(Color(0xFF2A2117)).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("PRIVACY STATUS: Only the private research workspace uses a separately verified Tor proxy. BOBBY chat, AI providers and plugins are not routed through Tor.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
+                                OutlinedButton(onClick = { darkResearchOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("OPEN PRIVATE RESEARCH WORKSPACE") }
+                            }
                         }
                         LazyColumn(state = chatListState, modifier = Modifier.weight(1f).fillMaxWidth().background(chatBg), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
                             if (chat.size <= 1) {
@@ -1134,6 +1146,91 @@ private fun BobbyHome(
                             }) { Text(if (editingMemoryId == null) "SAVE MEMORY" else "UPDATE MEMORY", color = Neon) }
                         },
                         dismissButton = { TextButton(onClick = { memoryOpen = false }) { Text("CLOSE") } }
+                    )
+                }
+                if (darkResearchOpen) {
+                    AlertDialog(
+                        onDismissRequest = { if (!torBusy) darkResearchOpen = false },
+                        title = { Text("BOBBY • PRIVATE RESEARCH") },
+                        text = {
+                            Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("TOR CONNECTION", color = Neon, style = MaterialTheme.typography.titleSmall)
+                                Text("Install and connect Orbot first. Default SOCKS port is 9050. Change it if your Orbot setup uses another port.")
+                                OutlinedTextField(value = torPortDraft, onValueChange = { torPortDraft = it.filter { ch -> ch.isDigit() }.take(5) }, label = { Text("Orbot SOCKS port") }, singleLine = true)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(enabled = !torBusy, onClick = {
+                                        val port = torPortDraft.toIntOrNull()
+                                        if (port == null || port !in 1..65535) torStatus = "Enter a valid SOCKS port."
+                                        else {
+                                            torResearch.savePort(port)
+                                            torBusy = true
+                                            torStatus = "Checking Tor route…"
+                                            Thread {
+                                                val result = torResearch.verifyTor()
+                                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                    torBusy = false
+                                                    torStatus = result.getOrElse { "NOT VERIFIED • " + (it.message ?: "Proxy unavailable.") }
+                                                }
+                                            }.start()
+                                        }
+                                    }) { Text(if (torBusy) "CHECKING…" else "VERIFY TOR") }
+                                    OutlinedButton(onClick = {
+                                        val launch = appContext.packageManager.getLaunchIntentForPackage("org.torproject.android")
+                                        if (launch != null) appContext.startActivity(launch)
+                                        else appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.android")))
+                                    }) { Text("OPEN / INSTALL ORBOT") }
+                                }
+                                Text(torStatus, color = if (torStatus.startsWith("TOR VERIFIED")) Color(0xFF62D6AE) else Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
+                                Divider()
+                                Text("ONION / PRIVATE BROWSER", color = Neon, style = MaterialTheme.typography.titleSmall)
+                                OutlinedTextField(value = torAddress, onValueChange = { torAddress = it.take(500) }, label = { Text("https:// or .onion address") }, modifier = Modifier.fillMaxWidth())
+                                Button(enabled = !torBusy && torAddress.isNotBlank(), onClick = {
+                                    torBusy = true
+                                    torStatus = "Verifying Tor and fetching page…"
+                                    Thread {
+                                        val result = torResearch.fetch(torAddress)
+                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            torBusy = false
+                                            result.onSuccess { torPage = it; torStatus = it.warning }
+                                                .onFailure { torStatus = "BLOCKED • " + (it.message ?: "Request failed.") }
+                                        }
+                                    }.start()
+                                }, modifier = Modifier.fillMaxWidth()) { Text("FETCH THROUGH TOR") }
+                                Text("PRIVATE SEARCH", color = Neon, style = MaterialTheme.typography.titleSmall)
+                                OutlinedTextField(value = torSearchQuery, onValueChange = { torSearchQuery = it.take(200) }, label = { Text("Search via DuckDuckGo over Tor") }, modifier = Modifier.fillMaxWidth())
+                                Button(enabled = !torBusy && torSearchQuery.isNotBlank(), onClick = {
+                                    torBusy = true
+                                    torStatus = "Verifying Tor and searching…"
+                                    Thread {
+                                        val result = torResearch.search(torSearchQuery)
+                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                            torBusy = false
+                                            result.onSuccess { torPage = it; torAddress = it.url; torStatus = it.warning }
+                                                .onFailure { torStatus = "SEARCH BLOCKED • " + (it.message ?: "Request failed.") }
+                                        }
+                                    }.start()
+                                }, modifier = Modifier.fillMaxWidth()) { Text("SEARCH VIA TOR") }
+                                torPage?.let { page ->
+                                    Text(page.title, color = Neon, style = MaterialTheme.typography.titleMedium)
+                                    Text(page.warning, color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        TextButton(onClick = { torResearch.addBookmark(page.title, page.url); torBookmarks = torResearch.bookmarks() }) { Text("SAVE BOOKMARK") }
+                                        TextButton(onClick = { torStatus = torResearch.inspect(page) }) { Text("INSPECT CONTENT") }
+                                    }
+                                    Text(page.text, style = MaterialTheme.typography.bodySmall)
+                                }
+                                Text("BOOKMARKS (" + torBookmarks.size + ")", color = Neon, style = MaterialTheme.typography.titleSmall)
+                                torBookmarks.forEach { item ->
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        TextButton(onClick = { torAddress = item.url }, modifier = Modifier.weight(1f)) { Text(item.title.ifBlank { item.url }, color = Neon) }
+                                        TextButton(onClick = { torResearch.removeBookmark(item.url); torBookmarks = torResearch.bookmarks() }) { Text("REMOVE") }
+                                    }
+                                }
+                                Text("SAFETY: BOBBY fetches text-only responses, caps pages at 1 MB, strips scripts/frames from displayed text and blocks binary files. This is not antivirus. Page content is untrusted. Tor does not guarantee anonymity.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
+                                Text("SCOPE: This workspace alone uses the verified Tor proxy. AI/API requests, plugins and other app traffic remain outside Tor.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { darkResearchOpen = false }) { Text("CLOSE", color = Neon) } }
                     )
                 }
                 if (webResearchOpen) {
