@@ -315,6 +315,7 @@ private fun BobbyHome(
     var permissionsOpen by remember { mutableStateOf(false) }
     var derivOpen by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
+    var mcpManagerOpen by remember { mutableStateOf(false) }
     var offlineOpen by remember { mutableStateOf(false) }
     var webResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
@@ -1265,7 +1266,9 @@ private fun BobbyHome(
                                 Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text("Add integrations to Bobby. Each connector needs its own authorization; installing a connector does not grant it phone or account access.")
+                                Text("Connect real services to BOBBY. Choose provider sign-in for supported APIs or connect an MCP server to discover its tools.")
+                                OutlinedButton(onClick = { mcpManagerOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("CONNECT MCP SERVER • MANAGE TOOLS", color = Neon) }
+                                OutlinedButton(onClick = { integrationsOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("OPEN PROVIDER SIGN-IN / OAUTH", color = Neon) }
                                 OutlinedTextField(
                                     value = pluginSearchDraft,
                                     onValueChange = { pluginSearchDraft = it.take(80) },
@@ -1335,7 +1338,7 @@ private fun BobbyHome(
                                             OutlinedButton(onClick = {
                                                 pluginStore.setEnabled(plugin.id, !pluginStore.isEnabled(plugin.id))
                                                 if (plugin.id == "github" && !pluginStore.isEnabled(plugin.id)) githubTokenDraft = ""
-                                            }) { Text(if (pluginStore.isEnabled(plugin.id)) "REMOVE" else "ADD") }
+                                            }) { Text(if (pluginStore.isEnabled(plugin.id)) "SAVED" else "SAVE TO SHORTLIST") }
                                             if (plugin.id == "github") {
                                                 OutlinedButton(onClick = {
                                                     runCatching {
@@ -1612,7 +1615,7 @@ private fun BobbyHome(
                 if (integrationsOpen) {
                     BobbyExternalIntegrationsDialog(onDismiss = { integrationsOpen = false })
                 }
-                if (settingsOpen) {
+                if (mcpManagerOpen) {\n                    BobbyMcpManagerDialog(onDismiss = { mcpManagerOpen = false })\n                }\n                if (settingsOpen) {
                     AlertDialog(
                         onDismissRequest = { settingsOpen = false },
                         title = { Text("Bobby AI connection") },
