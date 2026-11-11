@@ -188,3 +188,16 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Basic credential-pattern filtering remains in place. Users should not save passwords, API tokens, financial credentials or highly sensitive personal data.
 - Source commits: memory capture/update/retrieval `fbcf64b70942d452bed185ec1c4d7720f1944893`, chat integration `b36e85333b106336a62a87f57735e6394e7c913e`, category/search UI `05219a1ab69969829c2e9369b001a2539cf3f63d`, search matching `0da16808d795c76af11457b44a10787e843a1bbb`, callback label `c6929835e37714e69b289c645a7bea20378762b4`, editable vault UI `970d5bbc2e77637595ac46337e0cb6ec6463e66e`, save/update correction `ab5450ef225d3d91e4ba0ba434806865869bf591`.
 - Build and runtime verification pending. Automatic save/retrieval, UI editing, persistence and secret filtering must be tested in the APK before marking complete.
+
+
+
+## 2026-11-11 — Creative Studio video and music adapter upgrade (build and device verification pending)
+- Audited the existing Creative Studio instead of creating a duplicate generator. The app already had an OpenAI Images API image generator, a Meshy text-to-3D GLB workflow, local PDF/HTML/XML/JSON/Markdown/CSV/code-file creation, and fal.ai queue-based video/TTS generation.
+- Updated the video generator from the older MiniMax H3 Max route and mismatched request fields to the live-schema-verified `bytedance/seedance-2.5/us/text-to-video` endpoint. The request now uses supported fields: prompt, 5-second duration, 720p resolution, 16:9 aspect ratio, H.264, and synchronized audio.
+- Added an original-music tab using the live-schema-verified `elevenlabs/music/v2.5` endpoint. Users can set a prompt, duration from 3 to 600 seconds, and instrumental-only mode. Existing ElevenLabs v4 text-to-speech remains available.
+- Updated the 11-capability overview so it names the actual Creative Studio providers and clearly states that API keys, account access, and provider credits may be required.
+- Current live fal catalog/schema checks confirmed the endpoint IDs and request/response fields; this was a schema inspection, not a paid generation test. No media was generated and no user provider key was accessed.
+- Provider credentials continue to be stored in the Android Keystore-backed vault. Generated media is stored in app-private storage until exported through Android's document picker.
+- Remaining: build the APK, test video/audio/music queue completion and downloads with a user-authorised provider key, test OpenAI image generation and Meshy 3D on device, add reference-image/video editing workflows, add media playback/preview and a visible generated-assets library, and test on the Huawei Android 8 target device.
+- Source commits: video/music adapter update `33d51ddd3ae51ba181c4ee1dba1c941ad4874c0c`; capability overview update `15e0d28387f5521fd80c6c14a2af4201d29526eb`.
+- Status: implementation updated; APK build and provider/device tests pending. Do not mark the creative studio fully green until these checks pass.
