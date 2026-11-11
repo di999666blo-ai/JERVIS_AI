@@ -284,7 +284,6 @@ private fun BobbyHome(
     var updateOpen by remember { mutableStateOf(false) }
     var updateStatus by remember { mutableStateOf("Check GitHub for the latest signed BOBBY release.") }
     var updateBusy by remember { mutableStateOf(false) }
-    var pendingUpdate by remember { mutableStateOf<BobbyUpdateInfo?>(null) }
     val updateManager = remember { BobbyUpdateManager(appContext) }
     val agentRuntime = remember { BobbyAgentRuntime(appContext) }
     var agentHistory by remember { mutableStateOf(agentRuntime.recentTasks()) }
@@ -467,7 +466,6 @@ private fun BobbyHome(
             chat.add(ChatLine(true, "Opening BOBBY's secure update manager. I'll check the published APK and ask Android to confirm installation."))
             updateOpen = true
             updateStatus = "Ready to check GitHub releases."
-            pendingUpdate = null
             onSpeak("Opening my update manager.")
             return
         }
@@ -1446,51 +1444,42 @@ private fun BobbyHome(
                 if (updateOpen) {
                     AlertDialog(
                         onDismissRequest = { if (!updateBusy) updateOpen = false },
-                        title = { Text("BOBBY • APK UPDATER") },
+                        title = { Text("BOBBY • SELF UPDATE") },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("ECC development builds are published through GitHub Actions. BOBBY can check for a release, verify its SHA-256 digest when GitHub provides one, and ask Android to install it.")
+                                Text("One tap checks the newest published stable GitHub build, downloads BOBBY.apk, verifies its SHA-256 checksum, and opens Android's installer.")
                                 Text(updateStatus, color = Color.LightGray)
                                 if (updateBusy) CircularProgressIndicator(color = Neon)
-                                pendingUpdate?.let { Text("Available release: ${it.version}", color = Neon) }
-                                Text("Android will show the final installation confirmation. Updates require the same signing certificate as the installed app.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                                Text("Android requires your confirmation to install an app update. BOBBY cannot silently bypass Android's security prompt. The new APK must also use the same signing certificate as the installed app.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                             }
                         },
                         confirmButton = {
-                            Row {
-                                TextButton(enabled = !updateBusy, onClick = {
-                                    if (android.os.Build.VERSION.SDK_INT >= 26 && appContext.packageManager?.canRequestPackageInstalls() != true) {
-                                        appContext.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${appContext.packageName}")))
-                                        updateStatus = "Allow BOBBY to install updates, return here, then check again."
-                                    } else {
-                                        updateBusy = true
-                                        updateStatus = "Checking the latest public release…"
-                                        Thread {
-                                            val result = runCatching { updateManager.checkLatest() }
-                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                                updateBusy = false
-                                                result.onSuccess { pendingUpdate = it; updateStatus = "Update found. Tap INSTALL UPDATE to continue." }
-                                                    .onFailure { updateStatus = it.message ?: "No update could be checked." }
-                                            }
-                                        }.start()
-                                    }
-                                }) { Text("CHECK", color = Neon) }
-                                TextButton(enabled = !updateBusy && pendingUpdate != null, onClick = {
-                                    val selected = pendingUpdate ?: return@TextButton
+                            TextButton(enabled = !updateBusy, onClick = {
+                                if (android.os.Build.VERSION.SDK_INT >= 26 && appContext.packageManager?.canRequestPackageInstalls() != true) {
+                                    appContext.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${appContext.packageName}")))
+                                    updateStatus = "Allow BOBBY to install updates in Android Settings, return here, then tap UPDATE NOW."
+                                } else {
                                     updateBusy = true
-                                    updateStatus = "Downloading and verifying APK…"
+                                    updateStatus = "Checking GitHub for the latest stable build…"
                                     Thread {
-                                        val result = runCatching { updateManager.downloadAndPromptInstall(selected) }
+                                        val result = runCatching {
+                                            val latest = updateManager.checkLatest()
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                updateStatus = "Build ${latest.version} found. Downloading and verifying…"
+                                            }
+                                            updateManager.downloadAndPromptInstall(latest)
+                                            latest
+                                        }
                                         android.os.Handler(android.os.Looper.getMainLooper()).post {
                                             updateBusy = false
                                             updateStatus = result.fold(
-                                                { "APK verified. Android's installer should now ask you to confirm the update." },
-                                                { "Update stopped: ${it.message ?: "unknown error"}" }
+                                                { "Build ${it.version} verified. Android's installer is ready; confirm the update to finish." },
+                                                { "Update not installed: ${it.message ?: "unknown error"}" }
                                             )
                                         }
                                     }.start()
-                                }) { Text("INSTALL UPDATE", color = Neon) }
-                            }
+                                }
+                            }) { Text("UPDATE NOW", color = Neon) }
                         },
                         dismissButton = { TextButton(onClick = { updateOpen = false }) { Text("CLOSE") } }
                     )
