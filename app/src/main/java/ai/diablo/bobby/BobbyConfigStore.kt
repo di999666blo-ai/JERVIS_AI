@@ -15,8 +15,8 @@ class BobbyConfigStore(context: Context) {
     private val prefs = context.getSharedPreferences("bobby_private_config", Context.MODE_PRIVATE)
     private val alias = "bobby_api_key_aes"
 
-    fun endpoint(): String = prefs.getString("endpoint", "https://api.openai.com/v1") ?: "https://api.openai.com/v1"
-    fun model(): String = prefs.getString("model", "gpt-6.1-sol") ?: "gpt-6.1-sol"
+    fun endpoint(): String = prefs.getString("endpoint", "https://generativelanguage.googleapis.com/v1beta") ?: "https://generativelanguage.googleapis.com/v1beta"
+    fun model(): String = prefs.getString("model", "gemini-2.5-flash") ?: "gemini-2.5-flash"
     fun apiKey(): String = prefs.getString("api_key_encrypted", null)?.let { decrypt(it) }.orEmpty()
 
     fun save(endpoint: String, model: String, apiKey: String) {
