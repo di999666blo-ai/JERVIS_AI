@@ -84,10 +84,10 @@ private fun CapabilityHubScreen(onBack: () -> Unit) {
             "Plan multi-step work, keep task status and run a limited set of approved Android actions.",
             "Registered tool inventory, task history, local reminders, app launch and Clock handoff.",
             "The planner does not automatically execute arbitrary AI-generated commands. Consequential actions require explicit approval; background workflows are limited."),
-        CapabilityCard("11", "Trading intelligence", "🔴 ANALYSIS ONLY",
-            "Use trading research and risk-analysis guidance without treating it as a profit guarantee.",
-            "Trader Skill Pack with 11 analysis workflows and a Deriv account-verification foundation.",
-            "No live broker order execution, live Deriv tick engine, portfolio execution or autonomous trading is enabled in BOBBY.")
+        CapabilityCard("11", "Trading intelligence", "🟡 LIVE DATA • READ-ONLY ANALYSIS",
+            "Inspect live Deriv public-market prices and chart observations with specialist analysis agents.",
+            "Trader Skill Pack, public active-market catalogue, historical one-minute candles, live tick stream, Chart Analysis Agent and Risk Agent.",
+            "No broker order placement, account portfolio execution or autonomous trading is enabled. Live feed requires a valid Deriv App ID and network access.")
     )
 
     Surface(Modifier.fillMaxSize(), color = Color(0xFF050505)) {
