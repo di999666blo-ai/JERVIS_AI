@@ -348,7 +348,10 @@ private fun BobbyHome(
     var showStartup by remember { mutableStateOf(true) }
     var sidebarOpen by remember { mutableStateOf(false) }
     val uiPrefs = remember { appContext.getSharedPreferences("bobby_ui_preferences", android.content.Context.MODE_PRIVATE) }
-    var lightTheme by remember { mutableStateOf(uiPrefs.getBoolean("light_theme", false)) }
+    var themeMode by remember { mutableStateOf(uiPrefs.getString("theme_mode", if (uiPrefs.getBoolean("light_theme", false)) "LIGHT" else "DARK") ?: "DARK") }
+    val systemDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+    val lightTheme = when (themeMode) { "LIGHT" -> true; "DARK" -> false; else -> !systemDarkTheme }
+    var historyOpen by remember { mutableStateOf(false) }
     var chatSearch by remember { mutableStateOf("") }
     var modelMenuOpen by remember { mutableStateOf(false) }
     var conversationToRename by remember { mutableStateOf<BobbyConversation?>(null) }
@@ -789,6 +792,16 @@ private fun BobbyHome(
     val chatBg = if (lightTheme) Color(0xFFF7F7F8) else Color(0xFF212121)
     val mainText = if (lightTheme) Color(0xFF171717) else Color.White
     val mutedText = if (lightTheme) Color(0xFF666666) else Color.LightGray
+    androidx.compose.runtime.SideEffect {
+        hostActivity?.window?.let { window ->
+            window.statusBarColor = if (lightTheme) android.graphics.Color.WHITE else android.graphics.Color.rgb(5, 5, 5)
+            window.navigationBarColor = if (lightTheme) android.graphics.Color.WHITE else android.graphics.Color.rgb(5, 5, 5)
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = if (lightTheme) {
+                android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            } else 0
+        }
+    }
     MaterialTheme(colorScheme = if (lightTheme) lightColorScheme(background = pageBg, surface = panelBg, primary = Neon, onBackground = mainText, onSurface = mainText) else darkColorScheme(background = Void, surface = Panel, primary = Neon, onBackground = Color.White, onSurface = Color.White)) {
         Surface(Modifier.fillMaxSize(), color = pageBg) {
             Box(Modifier.fillMaxSize()) {
@@ -801,7 +814,7 @@ private fun BobbyHome(
                                 Text("BOBBY", color = mainText, style = MaterialTheme.typography.titleLarge)
                                 Text(when (activeMode) { BobbyMode.FRIENDLY -> "Friendly mode"; BobbyMode.WORKING -> "Work mode"; BobbyMode.DARK -> "Dark mode" }, color = mutedText, style = MaterialTheme.typography.labelSmall)
                             }
-                            TextButton(onClick = { lightTheme = !lightTheme; uiPrefs.edit().putBoolean("light_theme", lightTheme).apply() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(if (lightTheme) "☀" else "☾", color = mainText, fontSize = 20.sp) }
+                            TextButton(onClick = { themeMode = when (themeMode) { "DARK" -> "LIGHT"; "LIGHT" -> "AUTO"; else -> "DARK" }; uiPrefs.edit().putString("theme_mode", themeMode).putBoolean("light_theme", themeMode == "LIGHT").apply() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(when (themeMode) { "LIGHT" -> "☀ LIGHT"; "AUTO" -> "AUTO"; else -> "☾ DARK" }, color = mainText, fontSize = 11.sp) }
                             Box {
                                 TextButton(onClick = { modelMenuOpen = true }, contentPadding = PaddingValues(horizontal = 6.dp)) {
                                     Text("MODEL ▾", color = mainText, style = MaterialTheme.typography.labelSmall)
@@ -931,95 +944,82 @@ private fun BobbyHome(
                     }
                     if (sidebarOpen) {
                         Row(Modifier.fillMaxSize().background(Color(0x99000000))) {
-                            Column(Modifier.width(286.dp).fillMaxHeight().background(panelBg).padding(12.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(Modifier.width(286.dp).fillMaxHeight().background(panelBg).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Text("BOBBY", color = mainText, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                                     TextButton(onClick = { sidebarOpen = false }) { Text("✕", color = mainText) }
                                 }
                                 Button(onClick = {
-                                    val greeting = ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. What would you like to talk about?"; BobbyMode.WORKING -> "BOBBY WORK MODE READY. What are we working on?"; BobbyMode.DARK -> "DARK MODE ACTIVE. What would you like to research?" })
+                                    if (activeMode != BobbyMode.WORKING) {
+                                        modeStore.saveHistory(activeMode, chat.toList())
+                                        modeStore.setMode(BobbyMode.WORKING)
+                                        activeMode = BobbyMode.WORKING
+                                    }
+                                }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Neon, contentColor = Color.White)) {
+                                    Text(if (activeMode == BobbyMode.WORKING) "WORK MODE • ON" else "ENABLE WORK MODE")
+                                }
+                                @Composable fun drawerAction(label: String, action: () -> Unit) {
+                                    TextButton(onClick = { sidebarOpen = false; action() }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) {
+                                        Text(label, color = mainText, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyLarge)
+                                    }
+                                }
+                                drawerAction("＋  New Chat / Home") {
+                                    val greeting = ChatLine(true, when (activeMode) {
+                                        BobbyMode.FRIENDLY -> "Hey, I’m Bobby. What would you like to talk about?"
+                                        BobbyMode.WORKING -> "BOBBY WORK MODE READY. What are we working on?"
+                                        BobbyMode.DARK -> "DARK MODE ACTIVE. What would you like to research?"
+                                    })
                                     activeSessionId = conversationStore.create(activeMode, listOf(greeting))
                                     sessions = conversationStore.list(activeMode)
-                                    chatSearch = ""
-                                    sidebarOpen = false
-                                }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("+ New chat") }
-                                Text("SEARCH ALL CONVERSATIONS", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 10.dp))
-                                OutlinedTextField(value = chatSearch, onValueChange = { chatSearch = it.take(100) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search saved chats and messages") })
-                                val visibleSessions = if (chatSearch.isBlank()) sessions else sessions.filter { session ->
-                                    session.title.contains(chatSearch, ignoreCase = true) || session.messages.any { it.text.contains(chatSearch, ignoreCase = true) }
                                 }
-                                Text("${visibleSessions.size} saved conversations", color = mutedText, style = MaterialTheme.typography.labelSmall)
-                                visibleSessions.take(20).forEach { session ->
-                                    Column(Modifier.fillMaxWidth().background(if (session.id == activeSessionId) chatBg else Color.Transparent, RoundedCornerShape(8.dp)).padding(horizontal = 4.dp, vertical = 2.dp)) {
-                                        TextButton(onClick = { activeSessionId = session.id; sidebarOpen = false }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)) {
-                                            Column(Modifier.fillMaxWidth()) {
-                                                Text(session.title, color = mainText, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
-                                                Text(session.messages.lastOrNull()?.text.orEmpty().take(72), color = mutedText, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-                                            }
-                                        }
-                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                                            TextButton(onClick = { renameDraft = session.title; conversationToRename = session }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) { Text("RENAME", color = Neon, style = MaterialTheme.typography.labelSmall) }
-                                            TextButton(onClick = { conversationToDelete = session }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) { Text("DELETE", color = Color(0xFFE57373), style = MaterialTheme.typography.labelSmall) }
-                                        }
-                                    }
-                                }
-                                HorizontalDivider(color = Color(0xFF333333))
-                                Text("BOBBY TOOLS", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
-                                @Composable fun drawerAction(label: String, action: () -> Unit) {
-                                    TextButton(onClick = { sidebarOpen = false; action() }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)) {
-                                        Text(label, color = mainText, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium)
-                                    }
-                                }
-                                drawerAction("All 11 capabilities") { appContext.startActivity(Intent(appContext, BobbyCapabilityHubActivity::class.java)) }
-                                drawerAction("Memory vault") { memoryItems = memoryStore.list(); memoryOpen = true }
-                                drawerAction("Add file") { filePicker.launch(arrayOf("*/*")) }
-                                drawerAction("AI settings") { settingsOpen = true }
-                                drawerAction("Add plugins") { pluginsOpen = true }
-                                drawerAction("ECC agent") { agentHistory = agentRuntime.recentTasks(); agentOpen = true }
-                                drawerAction("AI performance & learning") { appContext.startActivity(Intent(appContext, BobbyLearningActivity::class.java)) }
-                                drawerAction("APK updates") { updateOpen = true; updateStatus = "Ready to check GitHub releases." }
-                                drawerAction("Offline AI") { offlineStatus = offlineStore.status().note; offlineOpen = true }
-                                drawerAction("Web research") { webResearchOpen = true }
-                                drawerAction("Dexter financial research") { dexterOpen = true }
-                                drawerAction("Trader skills • 11 tools") { traderSkillsOpen = true }
-                                drawerAction("Charts & AI agents") { chartAgentsOpen = true }
-                                drawerAction("Creative studio") { creativeStudioOpen = true }
-                                drawerAction("3D robot") { robot3dOpen = true }
-                                drawerAction("Custom BOBBY voice") { voiceCloneOpen = true }
-                                drawerAction("Offline voice library") { offlineVoiceLibraryOpen = true }
-                                drawerAction("Gmail • Calendar • Social") { integrationsOpen = true }
-                                drawerAction("Permissions") { permissionsOpen = true }
-                                drawerAction("See my screen") { screenCaptureLauncher.launch((appContext.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }
-                                drawerAction("Deriv connect") { derivOpen = true }
-                                drawerAction("Floating robot") { onToggleOverlay() }
-                                drawerAction("My profile") { onboardingOpen = true }
-                                drawerAction("Style the avatar") { avatarStudioOpen = true }
-                                drawerAction("Check today's weather") {
-                                    val city = profile?.city.orEmpty()
-                                    if (city.isBlank()) weatherText = "Add your city in MY PROFILE first."
-                                    else {
-                                        weatherLoading = true
-                                        Thread {
-                                            val result = runCatching { BobbyWeather.today(city) }.getOrElse { "Weather unavailable: " + (it.message ?: "network error") }
-                                            android.os.Handler(android.os.Looper.getMainLooper()).post { weatherText = result; weatherLoading = false }
-                                        }.start()
-                                    }
-                                }
-                                drawerAction("Share conversation") {
-                                    val transcript = chat.takeLast(12).joinToString("\\n\\n") { line -> (if (line.fromBobby) "BOBBY: " else "YOU: ") + line.text }
-                                    runCatching { BobbyCommunicationBridge.shareText(appContext, transcript, "Share BOBBY conversation") }
-                                }
-                                drawerAction("Clear this mode's history") {
-                                    modeStore.clearHistory(activeMode)
-                                    chat.clear()
-                                    chat.add(ChatLine(true, "This mode's saved conversation history was cleared."))
-                                }
-                                Spacer(Modifier.height(14.dp))
-                                Text("Diablo • BOBBY", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                                drawerAction("◷  History") { chatSearch = ""; sessions = conversationStore.list(activeMode); historyOpen = true }
+                                drawerAction("▣  My Files") { filePicker.launch(arrayOf("*/*")) }
+                                drawerAction("◇  Plugins") { pluginsOpen = true }
+                                drawerAction("⚙  Settings") { settingsOpen = true }
+                                Spacer(Modifier.weight(1f))
+                                Text("Agents and background tools run behind the scenes.", color = mutedText, style = MaterialTheme.typography.bodySmall)
+                                Text("Diablo • BOBBY", color = mutedText, style = MaterialTheme.typography.labelSmall)
                             }
                             Spacer(Modifier.weight(1f).fillMaxHeight().clickable { sidebarOpen = false })
                         }
                     }
+                }
+                if (historyOpen) {
+                    val visibleHistory = if (chatSearch.isBlank()) sessions else sessions.filter { item ->
+                        item.title.contains(chatSearch, ignoreCase = true) || item.messages.any { it.text.contains(chatSearch, ignoreCase = true) }
+                    }
+                    AlertDialog(
+                        onDismissRequest = { historyOpen = false },
+                        title = { Text("CHAT HISTORY") },
+                        text = {
+                            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                OutlinedTextField(value = chatSearch, onValueChange = { chatSearch = it.take(100) }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("Search conversations") })
+                                Text("${visibleHistory.size} SAVED CONVERSATIONS", color = Neon, style = MaterialTheme.typography.labelSmall)
+                                visibleHistory.forEach { session ->
+                                    Column(Modifier.fillMaxWidth().background(if (session.id == activeSessionId) chatBg else panelBg, RoundedCornerShape(8.dp)).padding(6.dp)) {
+                                        TextButton(onClick = { activeSessionId = session.id; historyOpen = false }, modifier = Modifier.fillMaxWidth()) {
+                                            Column(Modifier.fillMaxWidth()) {
+                                                Text(session.title, color = mainText, maxLines = 1)
+                                                Text(session.messages.lastOrNull()?.text.orEmpty().take(90), color = mutedText, maxLines = 2, style = MaterialTheme.typography.bodySmall)
+                                            }
+                                        }
+                                        Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                                            TextButton(onClick = { renameDraft = session.title; conversationToRename = session }) { Text("RENAME", color = Neon) }
+                                            TextButton(onClick = { conversationToDelete = session }) { Text("DELETE", color = Neon) }
+                                        }
+                                    }
+                                }
+                                if (visibleHistory.isEmpty()) Text("No saved conversations found.", color = mutedText)
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { historyOpen = false }) { Text("CLOSE", color = Neon) } },
+                        dismissButton = { TextButton(onClick = {
+                            val greeting = ChatLine(true, "This is a new BOBBY conversation. What would you like to do?")
+                            activeSessionId = conversationStore.create(activeMode, listOf(greeting))
+                            sessions = conversationStore.list(activeMode)
+                            historyOpen = false
+                        }) { Text("NEW CHAT", color = Neon) }
+                    )
                 }
                 if (conversationToRename != null) {
                     AlertDialog(
