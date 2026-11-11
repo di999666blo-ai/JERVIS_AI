@@ -4,6 +4,7 @@ import android.content.Context
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
+import android.view.MotionEvent
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -25,12 +26,42 @@ class Bobby3DHumanView(context: Context, look: BobbyAvatarLook, active: Boolean)
         renderMode = RENDERMODE_CONTINUOUSLY
         setPreserveEGLContextOnPause(true)
     }
+    private var previousTouchX = 0f
+
     fun updateLook(look: BobbyAvatarLook, active: Boolean) = avatarRenderer.update(look, active)
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                previousTouchX = event.x
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val delta = event.x - previousTouchX
+                previousTouchX = event.x
+                if (kotlin.math.abs(delta) > 0.5f) {
+                    queueEvent { avatarRenderer.rotateBy(delta * 0.65f) }
+                }
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                performClick()
+                return true
+            }
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
 }
 
 private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean) : GLSurfaceView.Renderer {
     @Volatile private var look = initialLook
     @Volatile private var active = initialActive
+    @Volatile private var rotationDegrees = 0f
     private var program = 0
     private var positionHandle = 0
     private var colorHandle = 0
@@ -47,6 +78,9 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
     private var startTime = System.nanoTime()
 
     fun update(value: BobbyAvatarLook, isActive: Boolean) { look = value; active = isActive }
+    fun rotateBy(deltaDegrees: Float) {
+        rotationDegrees = (rotationDegrees + deltaDegrees).let { ((it % 360f) + 360f) % 360f }
+    }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         GLES20.glClearColor(0.025f, 0.012f, 0.025f, 1f)
@@ -237,6 +271,7 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
 
     private fun part(x:Float,y:Float,z:Float,sx:Float,sy:Float,sz:Float,color:Int,bob:Float=0f,rotation:Float=0f) {
         Matrix.setIdentityM(model,0)
+        Matrix.rotateM(model,0,rotationDegrees,0f,1f,0f)
         Matrix.translateM(model,0,x,y+bob,z)
         if (rotation != 0f) Matrix.rotateM(model,0,rotation,0f,0f,1f)
         Matrix.scaleM(model,0,sx,sy,sz)
