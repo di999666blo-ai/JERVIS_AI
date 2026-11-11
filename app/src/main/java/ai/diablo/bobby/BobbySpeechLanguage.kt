@@ -3,12 +3,7 @@ package ai.diablo.bobby
 import android.speech.tts.TextToSpeech
 import java.util.Locale
 
-/**
- * Best-effort language selection for Android's local TTS fallback.
- * The neural speech provider receives the original text and is instructed to
- * speak it in its detected language. Local TTS only speaks languages installed
- * by the device's speech engine.
- */
+/** Language selection and safe-length chunking for Android's on-device speech engine. */
 object BobbySpeechLanguage {
     fun detectLanguageTag(text: String): String {
         val s = text.lowercase(Locale.ROOT)
@@ -34,12 +29,32 @@ object BobbySpeechLanguage {
 
     fun configureLocalTts(tts: TextToSpeech, text: String): Boolean {
         val locale = Locale.forLanguageTag(detectLanguageTag(text))
-        val availability = tts.isLanguageAvailable(locale)
-        if (availability < TextToSpeech.LANG_AVAILABLE) return false
+        if (tts.isLanguageAvailable(locale) < TextToSpeech.LANG_AVAILABLE) return false
         tts.language = locale
         val matching = tts.voices?.filter { it.locale.language == locale.language }
             ?.sortedBy { if (it.isNetworkConnectionRequired) 1 else 0 }?.firstOrNull()
         if (matching != null) tts.voice = matching
         return true
+    }
+
+    fun speakLocal(tts: TextToSpeech, text: String) {
+        if (text.isBlank()) return
+        if (!configureLocalTts(tts, text)) {
+            val fallback = Locale.getDefault()
+            if (tts.isLanguageAvailable(fallback) >= TextToSpeech.LANG_AVAILABLE) tts.language = fallback
+        }
+        val max = TextToSpeech.getMaxSpeechInputLength().coerceAtLeast(100)
+        val chunks = mutableListOf<String>()
+        var remaining = text.trim()
+        while (remaining.isNotEmpty()) {
+            if (remaining.length <= max) { chunks += remaining; break }
+            var cut = remaining.lastIndexOf(' ', max)
+            if (cut < max / 2) cut = max
+            chunks += remaining.substring(0, cut).trim()
+            remaining = remaining.substring(cut).trimStart()
+        }
+        chunks.forEachIndexed { index, chunk ->
+            tts.speak(chunk, if (index == 0) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD, null, "bobby-reply-$index")
+        }
     }
 }
