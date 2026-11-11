@@ -99,7 +99,12 @@ private class BobbyCreationEngine(private val context: Context) {
             }
             "html" -> {
                 val html = if (body.contains("<html", true)) body else
-                    "<!doctype html>\\n<html lang=\\"en\\">\\n<head><meta charset=\\"utf-8\\"><meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1\\"><title>" + name + "</title></head>\\n<body>\\n" + body + "\\n</body></html>"
+                    """<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${name}</title></head>
+<body>
+${body}
+</body></html>"""
                 file.writeText(html, Charsets.UTF_8)
             }
             else -> file.writeText(body, Charsets.UTF_8)
