@@ -870,6 +870,7 @@ private fun BobbyHome(
                                         Text(label, color = Color.White, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium)
                                     }
                                 }
+                                drawerAction("All 11 capabilities") { appContext.startActivity(Intent(appContext, BobbyCapabilityHubActivity::class.java)) }
                                 drawerAction("Memory vault") { memoryItems = memoryStore.list(); memoryOpen = true }
                                 drawerAction("Add file") { filePicker.launch(arrayOf("*/*")) }
                                 drawerAction("AI settings") { settingsOpen = true }
