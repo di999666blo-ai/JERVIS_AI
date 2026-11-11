@@ -180,6 +180,7 @@ fun BobbyExternalIntegrationsDialog(onDismiss: () -> Unit) {
     var xPost by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("") }
     var status by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("Tokens are encrypted on this phone. Configure OAuth/API access in each provider's developer console first.") }
     var busy by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var universalOpen by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val scroll = androidx.compose.foundation.rememberScrollState()
     fun check(action: ((Result<String>) -> Unit) -> Unit) {
         busy = true
@@ -196,6 +197,8 @@ fun BobbyExternalIntegrationsDialog(onDismiss: () -> Unit) {
                 modifier = androidx.compose.ui.Modifier.heightIn(max = 560.dp).verticalScroll(scroll),
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
             ) {
+                androidx.compose.material3.Button(onClick = { universalOpen = true }) { androidx.compose.material3.Text("OPEN UNIVERSAL OAUTH CONNECTOR") }
+                androidx.compose.material3.Text("Connect supported OAuth providers using their official sign-in screen. No passwords are entered into BOBBY.")
                 androidx.compose.material3.Text("GOOGLE • GMAIL + CALENDAR", color = androidx.compose.ui.graphics.Color(0xFFFF1744))
                 androidx.compose.material3.Text("Paste a short-lived Google OAuth access token granted both Gmail (gmail.readonly) and Calendar (calendar.readonly) scopes. A full in-app Google sign-in flow still requires your OAuth client configuration.")
                 androidx.compose.material3.OutlinedTextField(googleToken, { googleToken = it }, label = { androidx.compose.material3.Text("Google access token") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), singleLine = true)
@@ -253,4 +256,5 @@ fun BobbyExternalIntegrationsDialog(onDismiss: () -> Unit) {
         },
         confirmButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { androidx.compose.material3.Text("DONE") } }
     )
+    if (universalOpen) BobbyUniversalPluginConnectorDialog(onDismiss = { universalOpen = false })
 }
