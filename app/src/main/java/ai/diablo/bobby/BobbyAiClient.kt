@@ -18,8 +18,7 @@ object BobbyAiClient {
     private fun postGemini(settings: AiSettings, body: JSONObject): JSONObject {
         val model = settings.model.trim().ifBlank { "gemini-2.5-flash" }
         val endpoint = settings.endpoint.trimEnd('/')
-        val url = "$endpoint/models/$model:generateContent?key=" +
-            java.net.URLEncoder.encode(settings.apiKey, "UTF-8")
+        val url = "$endpoint/models/$model:generateContent"
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
             connection.requestMethod = "POST"
@@ -27,6 +26,7 @@ object BobbyAiClient {
             connection.readTimeout = 90000
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("x-goog-api-key", settings.apiKey)
             connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
             val raw = (if (code in 200..299) connection.inputStream else connection.errorStream)
