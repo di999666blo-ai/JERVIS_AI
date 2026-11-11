@@ -244,6 +244,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 }
 
 @Composable
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 private fun BobbyHome(
     onSpeak: (String) -> Unit,
     onStopSpeech: () -> Unit,
