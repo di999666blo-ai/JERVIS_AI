@@ -420,7 +420,7 @@ private fun BobbyHome(
         }
         state = "THINKING"
         val done: (Result<String>) -> Unit = { result ->
-            val reply = result.getOrElse { "I couldn't regenerate that reply: \${it.message ?: "unknown error"}." }
+            val reply = result.getOrElse { "I couldn't regenerate that reply: ${it.message ?: "unknown error"}." }
             chat.add(ChatLine(true, reply))
             state = if (result.isSuccess) "IDLE" else "ERROR"
             if (result.isSuccess) onSpeak(reply)
