@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 import java.io.File
+import java.io.DataOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
@@ -55,6 +56,92 @@ class BobbyCreativeStudioConnector(private val context: Context) {
                 val bytes = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
                 require(bytes.size in 1024..(25 * 1024 * 1024)) { "Generated image has an unexpected size." }
                 outputFile("image", "png").apply { writeBytes(bytes) }
+            })
+        }
+    }
+
+    fun editImage(sourceUri: Uri, prompt: String, apiKey: String, quality: String, callback: (Result<File>) -> Unit) {
+        thread(name = "bobby-image-edit") {
+            callback(runCatching {
+                require(prompt.trim().length in 3..32000) { "Describe the image edit in at least three characters." }
+                require(apiKey.isNotBlank()) { "Save your OpenAI API key in AI SETTINGS first." }
+                val mime = context.contentResolver.getType(sourceUri)?.lowercase().orEmpty()
+                val extension = when (mime) {
+                    "image/png" -> "png"
+                    "image/jpeg", "image/jpg" -> "jpg"
+                    "image/webp" -> "webp"
+                    else -> throw IllegalArgumentException("Choose a PNG, JPG or WebP image. HEIC and other formats are not supported.")
+                }
+                val source = File(context.cacheDir, "bobby_edit_input_" + System.currentTimeMillis() + "." + extension)
+                try {
+                    val input = context.contentResolver.openInputStream(sourceUri)
+                        ?: throw IllegalStateException("Could not read the selected image.")
+                    input.use { stream ->
+                        source.outputStream().use { output ->
+                            val buffer = ByteArray(16 * 1024)
+                            var total = 0L
+                            while (true) {
+                                val count = stream.read(buffer)
+                                if (count < 0) break
+                                total += count
+                                require(total < 50L * 1024 * 1024) { "Image must be smaller than 50 MB." }
+                                output.write(buffer, 0, count)
+                            }
+                        }
+                    }
+                    require(source.length() > 0L) { "The selected image is empty." }
+                    val boundary = "----BOBBYImageEdit" + java.util.UUID.randomUUID().toString().replace("-", "")
+                    val connection = URL("https://api.openai.com/v1/images/edits").openConnection() as HttpURLConnection
+                    try {
+                        connection.requestMethod = "POST"
+                        connection.connectTimeout = 30000
+                        connection.readTimeout = 180000
+                        connection.doOutput = true
+                        connection.setRequestProperty("Authorization", "Bearer " + apiKey)
+                        connection.setRequestProperty("Accept", "application/json")
+                        connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary)
+                        connection.setChunkedStreamingMode(16 * 1024)
+                        DataOutputStream(connection.outputStream).use { out ->
+                            fun field(name: String, value: String) {
+                                out.writeBytes("--" + boundary + "\r\n")
+                                out.writeBytes("Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n")
+                                out.write(value.toByteArray(Charsets.UTF_8))
+                                out.writeBytes("\r\n")
+                            }
+                            field("model", "gpt-image-2.5-flare")
+                            field("prompt", prompt.trim())
+                            field("quality", quality)
+                            field("output_format", "png")
+                            out.writeBytes("--" + boundary + "\r\n")
+                            out.writeBytes("Content-Disposition: form-data; name=\"image[]\"; filename=\"" + source.name + "\"\r\n")
+                            out.writeBytes("Content-Type: " + mime + "\r\n\r\n")
+                            source.inputStream().use { it.copyTo(out) }
+                            out.writeBytes("\r\n--" + boundary + "--\r\n")
+                            out.flush()
+                        }
+                        val code = connection.responseCode
+                        val raw = (if (code in 200..299) connection.inputStream else connection.errorStream)
+                            ?.bufferedReader()?.use { it.readText() }.orEmpty()
+                        if (code !in 200..299) {
+                            val detail = runCatching {
+                                val json = JSONObject(raw)
+                                json.optJSONObject("error")?.optString("message").orEmpty()
+                                    .ifBlank { json.optString("message") }
+                            }.getOrDefault("")
+                            throw IllegalStateException("OpenAI image edit HTTP " + code +
+                                if (detail.isNotBlank()) ": " + detail.take(500) else ". Check API key, image model access and credits.")
+                        }
+                        val encoded = JSONObject(raw).optJSONArray("data")?.optJSONObject(0)?.optString("b64_json").orEmpty()
+                        require(encoded.isNotBlank()) { "Image edit returned no image data." }
+                        val bytes = android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
+                        require(bytes.size in 1024..(25 * 1024 * 1024)) { "Edited image has an unexpected size." }
+                        outputFile("image_edit", "png").apply { writeBytes(bytes) }
+                    } finally {
+                        connection.disconnect()
+                    }
+                } finally {
+                    source.delete()
+                }
             })
         }
     }
@@ -151,6 +238,8 @@ fun BobbyCreativeStudioDialog(onDismiss: () -> Unit, openAiApiKey: String) {
     val connector = remember { BobbyCreativeStudioConnector(context) }
     var tab by remember { mutableStateOf("IMAGE") }
     var imagePrompt by remember { mutableStateOf("") }
+    var editPrompt by remember { mutableStateOf("") }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var modelPrompt by remember { mutableStateOf("") }
     var meshyKey by remember { mutableStateOf("") }
     var quality by remember { mutableStateOf("medium") }
@@ -159,6 +248,22 @@ fun BobbyCreativeStudioDialog(onDismiss: () -> Unit, openAiApiKey: String) {
     var imagePath by remember { mutableStateOf("") }
     var assetPath by remember { mutableStateOf("") }
     val handler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            selectedImageUri = uri
+            status = "Source image selected. Describe the edit below."
+        }
+    }
+    val imageExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri: Uri? ->
+        if (uri != null && imagePath.isNotBlank()) {
+            runCatching {
+                context.contentResolver.openOutputStream(uri)?.use { output ->
+                    File(imagePath).inputStream().use { input -> input.copyTo(output) }
+                } ?: error("Could not open export destination.")
+            }.onSuccess { status = "Edited image exported to your phone." }
+                .onFailure { status = "Image export failed: " + it.message }
+        }
+    }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("model/gltf-binary")) { uri: Uri? ->
         if (uri != null && assetPath.isNotBlank()) {
             runCatching {
@@ -198,9 +303,34 @@ fun BobbyCreativeStudioDialog(onDismiss: () -> Unit, openAiApiKey: String) {
                             }
                         }
                     }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "GENERATING…" else "GENERATE IMAGE") }
+
+                    Divider()
+                    Text("EDIT AN EXISTING IMAGE", color = Color(0xFFFF1744), style = MaterialTheme.typography.titleSmall)
+                    Text("Choose a picture from your phone, then tell BOBBY what to change. The original stays untouched.", style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(enabled = !busy, onClick = { imagePicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (selectedImageUri == null) "CHOOSE IMAGE FROM PHONE" else "CHANGE SOURCE IMAGE")
+                    }
+                    if (selectedImageUri != null) {
+                        Text("SOURCE IMAGE SELECTED", style = MaterialTheme.typography.labelSmall)
+                        OutlinedTextField(value = editPrompt, onValueChange = { editPrompt = it.take(4000) },
+                            label = { Text("Describe the edit") }, minLines = 2, modifier = Modifier.fillMaxWidth())
+                        Button(enabled = !busy && editPrompt.isNotBlank() && openAiApiKey.isNotBlank(), onClick = {
+                            val source = selectedImageUri ?: return@Button
+                            busy = true
+                            status = "Uploading source image and applying edit…"
+                            connector.editImage(source, editPrompt, openAiApiKey, quality) { result ->
+                                handler.post {
+                                    busy = false
+                                    result.onSuccess { imagePath = it.absolutePath; status = "EDITED IMAGE READY • " + it.length() / 1024 + " KB" }
+                                        .onFailure { status = "IMAGE EDIT FAILED • " + it.message }
+                                }
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "EDITING IMAGE…" else "EDIT IMAGE") }
+                    }
                     if (imagePath.isNotBlank()) {
                         val bitmap = remember(imagePath) { BitmapFactory.decodeFile(imagePath)?.asImageBitmap() }
-                        if (bitmap != null) Image(bitmap = bitmap, contentDescription = "Generated image", modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp))
+                        if (bitmap != null) Image(bitmap = bitmap, contentDescription = "Generated or edited image", modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp))
+                        Button(onClick = { imageExportLauncher.launch(File(imagePath).name) }, modifier = Modifier.fillMaxWidth()) { Text("EXPORT IMAGE TO PHONE") }
                     }
                 } else {
                     Text("Meshy Text-to-3D • Creates a textured GLB mesh. Meshy account and credits are required.", style = MaterialTheme.typography.bodySmall)
