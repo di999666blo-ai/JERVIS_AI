@@ -300,6 +300,7 @@ private fun BobbyHome(
         }
     }
     val audioRecorder = remember { BobbyAudioRecorder(appContext) }
+    DisposableEffect(audioRecorder) { onDispose { if (audioRecorder.isRecording) audioRecorder.cancel() } }
     var recordingActive by remember { mutableStateOf(false) }
     var recordingPendingPermission by remember { mutableStateOf(false) }
     var recordingStatus by remember { mutableStateOf("NOT RECORDING") }
