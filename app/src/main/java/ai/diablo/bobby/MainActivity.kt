@@ -104,7 +104,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 onAskOffline = { prompt, done -> offlineAi.reply(prompt, done) },
                 onTestOffline = { done -> offlineAi.reply("Reply exactly: BOBBY OFFLINE MODEL TEST PASSED.", done) },
                 onAskAiWithImage = { history, path, done ->
-                    BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path)) { result -> android.os.Handler(android.os.Looper.getMainLooper()).post { done(result) } }
+                    val mode = BobbyModeStore(this).mode()
+                    val proxy = if (mode == BobbyMode.DARK) BobbyTorResearch(this).proxyForRequests() else null
+                    BobbyAiClient.replyWithImage(AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey()), history, java.io.File(path), proxy) { result -> android.os.Handler(android.os.Looper.getMainLooper()).post { done(result) } }
                 },
                 onAskAi = askAi@{ history, done ->
                     val latestUserMessage = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
@@ -136,7 +138,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     val aiSettings = AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey())
                     val askWithContext: (String) -> Unit = { webContext ->
                         val requestStartedAt = android.os.SystemClock.elapsedRealtime()
-                        BobbyAiClient.reply(aiSettings, history, completeContext, BobbyModeStore(this).mode(), webContext) { result ->
+                        val requestMode = BobbyModeStore(this).mode()
+                        val torProxy = if (requestMode == BobbyMode.DARK) BobbyTorResearch(this).proxyForRequests() else null
+                        BobbyAiClient.reply(aiSettings, history, completeContext, requestMode, webContext, torProxy) { result ->
                         BobbyTraceStore(this).record(
                             request = userQuestion,
                             model = aiSettings.model,

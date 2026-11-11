@@ -21,6 +21,7 @@ class BobbyTorResearch(context: Context) {
         prefs.edit().putInt("socks_port", value).apply()
     }
     private fun proxy(): Proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress.createUnresolved("127.0.0.1", port()))
+    fun proxyForRequests(): Proxy = proxy()
 
     fun verifyTor(): Result<String> = runCatching {
         val connection = URL("https://check.torproject.org/api/ip").openConnection(proxy())
