@@ -51,7 +51,7 @@ class BobbyChartAgentsActivity:ComponentActivity(){
    Box{OutlinedButton(onClick={expanded=true}){Text(markets.firstOrNull{it.symbol==selected}?.name?: "Select market")};DropdownMenu(expanded=expanded,onDismissRequest={expanded=false}){markets.take(250).forEach{m->DropdownMenuItem(text={Text(m.name)},onClick={selected=m.symbol; candles=emptyList();ticks=emptyList();feed.selectMarket(m.symbol,{candles=it},{t->ticks=(ticks+t).takeLast(240)});expanded=false})}}}
   }
   Text("1-MINUTE CANDLES • LAST 100",color=ChartRed,fontSize=11.sp)
-  PriceChart(candles.map{it.close}.ifEmpty{ticks.map{it.price}})
+  PriceChart(candles,ticks)
   Text("Price: ${ticks.lastOrNull()?.price?.toString()?:candles.lastOrNull()?.close?.toString()?:"—"}   •   ticks: ${ticks.size}   •   candles: ${candles.size}",color=Color.LightGray,fontSize=12.sp)
   Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
    Button(onClick={analysis=ChartAgentEngine.analyse(selected,candles,ticks)}){Text("CHART ANALYSIS AGENT")}
@@ -62,13 +62,25 @@ class BobbyChartAgentsActivity:ComponentActivity(){
   Text("Agents provide analysis only. No orders are placed. Live data availability depends on Deriv API access and your network.",color=Color.Gray,fontSize=10.sp)
  }
 }
-@Composable private fun PriceChart(values:List<Double>){
+@Composable private fun PriceChart(candles:List<BobbyMarketCandle>,ticks:List<BobbyPricePoint>){
  Canvas(Modifier.fillMaxWidth().height(190.dp).background(Color(0xFF101010),RoundedCornerShape(12.dp)).padding(10.dp)){
   for(i in 1..3){val y=size.height*i/4f;drawLine(Color.DarkGray,Offset(0f,y),Offset(size.width,y),1f)}
-  if(values.size<2)return@Canvas
-  val min=values.minOrNull()?:return@Canvas;val max=values.maxOrNull()?:return@Canvas;val range=(max-min).takeIf{it>0}?:1.0
-  val pts=values.mapIndexed{i,v->Offset(size.width*i/(values.size-1),size.height-( ((v-min)/range).toFloat()*size.height))}
-  pts.zipWithNext().forEach{(a,b)->drawLine(ChartRed,a,b,2.5f)}
+  if(candles.size>=2){
+   val lo=candles.minOf{it.low};val hi=candles.maxOf{it.high};val span=(hi-lo).takeIf{it>0}?:1.0
+   val step=size.width/candles.size;val bodyWidth=(step*0.58f).coerceAtLeast(2f)
+   candles.forEachIndexed{index,candle->
+    val x=step*(index+0.5f)
+    fun y(price:Double)=size.height-(((price-lo)/span).toFloat()*size.height)
+    val rising=candle.close>=candle.open;val tint=if(rising)Color(0xFF45D483) else ChartRed
+    drawLine(tint,Offset(x,y(candle.high)),Offset(x,y(candle.low)),1.5f)
+    val top=minOf(y(candle.open),y(candle.close));val bottom=maxOf(y(candle.open),y(candle.close))
+    drawLine(tint,Offset(x,top),Offset(x,maxOf(top+2f,bottom)),bodyWidth)
+   }
+  }else if(ticks.size>=2){
+   val values=ticks.map{it.price};val lo=values.minOrNull()?:return@Canvas;val hi=values.maxOrNull()?:return@Canvas;val span=(hi-lo).takeIf{it>0}?:1.0
+   val pts=values.mapIndexed{i,v->Offset(size.width*i/(values.size-1),size.height-(((v-lo)/span).toFloat()*size.height))}
+   pts.zipWithNext().forEach{(a,b)->drawLine(ChartRed,a,b,2.5f)}
+  }
  }
 }
 private object ChartAgentEngine{
