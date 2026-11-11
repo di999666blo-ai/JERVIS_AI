@@ -69,7 +69,8 @@ object BobbyAiClient {
             } catch (error: Exception) {
                 attempt++
                 val message = error.message.orEmpty()
-                val retryableHttp = Regex("HTTP (408|429|5\\\\d\\\\d)\\\\b").containsMatchIn(message)
+                val statusCode = Regex("""HTTP (\\d{3})""").find(message)?.groupValues?.get(1)?.toIntOrNull()
+                val retryableHttp = statusCode == 408 || statusCode == 429 || (statusCode != null && statusCode >= 500)
                 val retryableNetwork = error is java.io.IOException
                 if ((!retryableHttp && !retryableNetwork) || attempt >= 3) throw error
                 try { Thread.sleep(500L * attempt) } catch (interrupted: InterruptedException) {
