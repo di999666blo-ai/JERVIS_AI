@@ -3,7 +3,6 @@ package ai.diablo.bobby
 import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
-import android.provider.OpenableColumns
 import java.util.concurrent.Executors
 import org.json.JSONArray
 import org.json.JSONObject
@@ -18,7 +17,8 @@ data class BobbyMemory(
 )
 
 /** Local, user-controlled memory. Secrets are rejected/redacted and never used for credentials. */
-class BobbyMemoryStore(context: Context) {\n    private val context = context.applicationContext
+class BobbyMemoryStore(context: Context) {
+    private val context = context.applicationContext
     private val prefs = context.getSharedPreferences("bobby_user_memory", Context.MODE_PRIVATE)
     private val lock = Any()
     private val backupExecutor = Executors.newSingleThreadExecutor()
@@ -162,7 +162,8 @@ class BobbyMemoryStore(context: Context) {\n    private val context = context.ap
         backupStatusValue = "CONNECTED • backed up"
         prefs.edit().putString("drive_backup_status", backupStatusValue).apply()
     }
-\n    private fun readAll(): List<BobbyMemory> = runCatching {
+
+    private fun readAll(): List<BobbyMemory> = runCatching {
         val a = JSONArray(prefs.getString(KEY, "[]"))
         (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let {
             BobbyMemory(it.optString("id"), it.optString("category"), it.optString("title"),
