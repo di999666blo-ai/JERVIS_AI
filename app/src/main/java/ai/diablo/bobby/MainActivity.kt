@@ -307,6 +307,7 @@ private fun BobbyHome(
     var dexterOpen by remember { mutableStateOf(false) }
     var traderSkillsOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
+    var sidebarOpen by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
     var webQuery by remember { mutableStateOf("") }
     var webKeyDraft by remember { mutableStateOf("") }
@@ -692,168 +693,143 @@ private fun BobbyHome(
     MaterialTheme(colorScheme = darkColorScheme(background = Void, surface = Panel, primary = Neon, onBackground = Color.White, onSurface = Color.White)) {
         Surface(Modifier.fillMaxSize(), color = Void) {
             Box(Modifier.fillMaxSize()) {
-            Column(
-                Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF280A16), Void, Void))).padding(horizontal = 18.dp, vertical = 14.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("BOBBY", style = MaterialTheme.typography.headlineLarge, color = Neon)
-                        Text("YOUR PERSONAL AI COMPANION", color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        TextButton(onClick = { memoryItems = memoryStore.list(); memoryOpen = true }) { Text("MEMORY", color = Neon) }
-                        TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }) { Text("ADD FILE", color = Neon) }
-                        TextButton(onClick = { settingsOpen = true }) { Text("AI SETTINGS", color = Neon) }
-                        TextButton(onClick = { pluginsOpen = true }) { Text("ADD PLUGINS", color = Neon) }
-                        TextButton(onClick = { agentHistory = agentRuntime.recentTasks(); agentOpen = true }) { Text("ECC AGENT", color = Neon) }
-                        TextButton(onClick = { updateOpen = true; updateStatus = "Ready to check GitHub releases."; pendingUpdate = null }) { Text("APK UPDATES", color = Neon) }
-                        TextButton(onClick = { offlineStatus = offlineStore.status().note; offlineOpen = true }) { Text("OFFLINE AI", color = Neon) }
-                        TextButton(onClick = { webResearchOpen = true }) { Text("WEB RESEARCH", color = Neon) }
-                        TextButton(onClick = { dexterOpen = true }) { Text("DEXTER FINANCIAL RESEARCH", color = Neon) }
-                        TextButton(onClick = { traderSkillsOpen = true }) { Text("TRADER SKILLS • 11 TOOLS", color = Neon) }
-                        TextButton(onClick = { creativeStudioOpen = true }) { Text("CREATIVE STUDIO", color = Neon) }
-                        TextButton(onClick = { robot3dOpen = true }) { Text("3D ROBOT", color = Neon) }
-                        TextButton(onClick = { voiceCloneOpen = true }) { Text("CUSTOM BOBBY VOICE", color = Neon) }
-                        TextButton(onClick = { offlineVoiceLibraryOpen = true }) { Text("OFFLINE VOICE LIBRARY", color = Neon) }
-                        TextButton(onClick = { integrationsOpen = true }) { Text("GMAIL • CALENDAR • SOCIAL", color = Neon) }
-                        TextButton(onClick = { permissionsOpen = true }) { Text("PERMISSIONS", color = Neon) }
-                        TextButton(onClick = { screenCaptureLauncher.launch((appContext.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }) { Text("SEE MY SCREEN", color = Neon) }
-                        TextButton(onClick = { derivOpen = true }) { Text("DERIV CONNECT", color = Neon) }
-                        TextButton(onClick = onToggleOverlay) { Text("FLOATING ROBOT", color = Neon) }
-                    }
-                }
-                Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("BOBBY OPERATING MODE", color = Neon, style = MaterialTheme.typography.labelLarge)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Button(onClick = {
-                            if (activeMode != BobbyMode.FRIENDLY) {
-                                modeStore.saveHistory(activeMode, chat.toList())
-                                modeStore.setMode(BobbyMode.FRIENDLY)
-                                activeMode = BobbyMode.FRIENDLY
+            Column(Modifier.fillMaxSize().background(Void)) {
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    Column(Modifier.fillMaxSize()) {
+                        Row(Modifier.fillMaxWidth().background(Color(0xFF171717)).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { sidebarOpen = true }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("☰", color = Color.White, fontSize = 23.sp) }
+                            Column(Modifier.weight(1f)) {
+                                Text("BOBBY GPT", color = Color.White, style = MaterialTheme.typography.titleLarge)
+                                Text(when (activeMode) { BobbyMode.FRIENDLY -> "Friendly mode"; BobbyMode.WORKING -> "Work mode"; BobbyMode.DARK -> "Dark mode" }, color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
                             }
-                        }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.FRIENDLY) Neon else Color(0xFF30232A))) { Text("FRIENDLY", fontSize = 11.sp) }
-                        Button(onClick = {
-                            if (activeMode != BobbyMode.WORKING) {
-                                modeStore.saveHistory(activeMode, chat.toList())
-                                modeStore.setMode(BobbyMode.WORKING)
-                                activeMode = BobbyMode.WORKING
+                            Surface(color = Color(0xFF12382F), shape = RoundedCornerShape(20.dp)) {
+                                Text(if (aiEnabled) "● AI READY" else if (offlineStore.status().installed) "● OFFLINE" else "● LOCAL", color = Color(0xFF62D6AE), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelSmall)
                             }
-                        }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.WORKING) Neon else Color(0xFF30232A))) { Text("WORK", fontSize = 11.sp) }
-                        Button(onClick = {
-                            if (activeMode != BobbyMode.DARK) {
-                                modeStore.saveHistory(activeMode, chat.toList())
-                                modeStore.setMode(BobbyMode.DARK)
-                                activeMode = BobbyMode.DARK
-                            }
-                        }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (activeMode == BobbyMode.DARK) Neon else Color(0xFF30232A))) { Text("DARK", fontSize = 11.sp) }
-                    }
-                    Text(when (activeMode) {
-                        BobbyMode.FRIENDLY -> "Everyday companion • conversations • learning • planning"
-                        BobbyMode.WORKING -> "Focused work • projects • research • writing • task planning"
-                        BobbyMode.DARK -> "Privacy workspace • separate chat history • Tor Browser launcher"
-                    }, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
-                    if (activeMode == BobbyMode.DARK) {
-                        Text("PRIVACY FACT: Tor Browser protects browsing inside Tor Browser only. BOBBY's AI/API requests, Android apps, DNS and other network traffic are not automatically routed through Tor. No app can promise that you are untraceable.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall)
-                        Text("For stronger privacy: keep BOBBY updated, use HTTPS services, avoid entering identifying accounts in private sessions, do not install unknown APKs, and clear this mode's chat history when appropriate. Your network provider may still see that you connect to Tor.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(onClick = {
-                            val launch = appContext.packageManager.getLaunchIntentForPackage("org.torproject.torbrowser")
-                            if (launch != null) {
-                                runCatching { appContext.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                            } else {
-                                runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.torproject.org/download/"))) }
-                            }
-                        }, modifier = Modifier.fillMaxWidth()) { Text("OPEN / INSTALL OFFICIAL TOR BROWSER") }
-                    }
-                    TextButton(onClick = {
-                        modeStore.clearHistory(activeMode)
-                        chat.clear()
-                        chat.add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Friendly Mode history cleared."; BobbyMode.WORKING -> "Work Mode history cleared."; BobbyMode.DARK -> "Dark Mode history cleared." }))
-                    }) { Text("CLEAR THIS MODE'S HISTORY", color = Neon) }
-                }
-                Spacer(Modifier.height(6.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { onboardingOpen = true }, modifier = Modifier.weight(1f)) {
-                        Text(if (profile == null) "SET UP PROFILE" else "MY PROFILE")
-                    }
-                    OutlinedButton(onClick = {
-                        val city = profile?.city.orEmpty()
-                        if (city.isBlank()) weatherText = "Add your city in MY PROFILE first."
-                        else {
-                            weatherLoading = true
-                            Thread {
-                                val result = runCatching { BobbyWeather.today(city) }.getOrElse { "Weather unavailable: " + (it.message ?: "network error") }
-                                android.os.Handler(android.os.Looper.getMainLooper()).post { weatherText = result; weatherLoading = false }
-                            }.start()
                         }
-                    }, modifier = Modifier.weight(1f), enabled = !weatherLoading) {
-                        Text(if (weatherLoading) "CHECKING…" else "TODAY’S WEATHER ☀")
-                    }
-                }
-                Text(weatherText, color = Color.LightGray, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
-                OutlinedButton(
-                    onClick = {
-                        val transcript = chat.takeLast(12).joinToString("\\n\\n") { line ->
-                            (if (line.fromBobby) "BOBBY: " else "YOU: ") + line.text
+                        Row(Modifier.fillMaxWidth().background(Color(0xFF212121)).padding(horizontal = 10.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(BobbyMode.FRIENDLY to "FRIENDLY", BobbyMode.WORKING to "WORK", BobbyMode.DARK to "DARK").forEach { (mode, label) ->
+                                TextButton(onClick = {
+                                    if (activeMode != mode) {
+                                        modeStore.saveHistory(activeMode, chat.toList())
+                                        modeStore.setMode(mode)
+                                        activeMode = mode
+                                    }
+                                }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(vertical = 4.dp)) {
+                                    Text(label, color = if (activeMode == mode) Neon else Color.LightGray, fontSize = 11.sp)
+                                }
+                            }
                         }
-                        runCatching { BobbyCommunicationBridge.shareText(appContext, transcript, "Share BOBBY conversation") }
-                            .onFailure { chat.add(ChatLine(true, "Sharing could not be opened: " + (it.message ?: "unknown error"))) }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("SHARE CONVERSATION TO APPS") }
-                Spacer(Modifier.height(4.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.weight(1f).height(220.dp)
-                            .background(Brush.radialGradient(listOf(Color(0xFF35101E), Color(0xFF10080D), Void)), RoundedCornerShape(18.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        BobbyHumanAvatar(avatarLook, Modifier.fillMaxSize().padding(horizontal = 24.dp, vertical = 5.dp), active = state != "IDLE")
-                        Text(state, Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp), color = Neon, style = MaterialTheme.typography.labelSmall)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { avatarStudioOpen = true }, colors = ButtonDefaults.buttonColors(containerColor = Neon)) { Text("STYLE") }
-                        OutlinedButton(onClick = {
-                            val next = avatarLook.copy(outfit = kotlin.random.Random.nextInt(0, 1000), lastChangeMillis = System.currentTimeMillis())
-                            avatarLook = next; avatarStore.save(next)
-                        }) { Text("RANDOM") }
-                    }
-                }
-                if (avatarStudioOpen) {
-                    BobbyAvatarCustomizer(avatarLook, onSave = { avatarLook = it; avatarStore.save(it) }, onClose = { avatarStudioOpen = false })
-                }
-                Spacer(Modifier.height(10.dp))
-                LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(9.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
-                    items(chat) { line ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (line.fromBobby) Arrangement.Start else Arrangement.End) {
-                            Surface(color = if (line.fromBobby) Panel else Color(0xFF421020), shape = RoundedCornerShape(16.dp), modifier = Modifier.widthIn(max = 310.dp)) {
-                                Text(line.text, Modifier.padding(13.dp), color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                        if (activeMode == BobbyMode.DARK) {
+                            Text("Tor Browser protects browsing inside Tor Browser only. BOBBY's AI/API traffic is not routed through Tor.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(Color(0xFF2A2117)).padding(10.dp))
+                        }
+                        LazyColumn(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF212121)), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+                            items(chat) { line ->
+                                Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), horizontalArrangement = if (line.fromBobby) Arrangement.Start else Arrangement.End, verticalAlignment = Alignment.Top) {
+                                    if (line.fromBobby) {
+                                        Surface(color = Neon, shape = CircleShape, modifier = Modifier.size(30.dp)) { Box(contentAlignment = Alignment.Center) { Text("B", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) } }
+                                        Spacer(Modifier.width(12.dp))
+                                    }
+                                    Surface(color = if (line.fromBobby) Color.Transparent else Color(0xFF303030), shape = RoundedCornerShape(18.dp), modifier = Modifier.widthIn(max = 310.dp)) {
+                                        Text(line.text, Modifier.padding(horizontal = 14.dp, vertical = 11.dp), color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                                    }
+                                    if (!line.fromBobby) {
+                                        Spacer(Modifier.width(12.dp))
+                                        Surface(color = Color(0xFF5436DA), shape = CircleShape, modifier = Modifier.size(30.dp)) { Box(contentAlignment = Alignment.Center) { Text("D", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) } }
+                                    }
+                                }
+                            }
+                            if (state == "THINKING" || state == "READING FILE") {
+                                item {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+                                        Surface(color = Neon, shape = CircleShape, modifier = Modifier.size(30.dp)) { Box(contentAlignment = Alignment.Center) { Text("B", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) } }
+                                        Spacer(Modifier.width(12.dp))
+                                        Text("BOBBY is thinking  •  •  •", color = Color.LightGray, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                            }
+                        }
+                        Column(Modifier.fillMaxWidth().background(Color(0xFF212121)).padding(horizontal = 12.dp, vertical = 10.dp)) {
+                            Row(Modifier.fillMaxWidth().background(Color(0xFF303030), RoundedCornerShape(24.dp)).padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                BasicTextField(value = draft, onValueChange = { draft = it }, modifier = Modifier.weight(1f).padding(vertical = 10.dp), textStyle = TextStyle(color = Color.White, fontSize = 16.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(Neon), decorationBox = { inner -> if (draft.isEmpty()) Text("Message BOBBY...", color = Color.Gray); inner() })
+                                TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }, contentPadding = PaddingValues(6.dp)) { Text("+", color = Color.LightGray, fontSize = 22.sp) }
+                                Button(onClick = { send(draft) }, enabled = draft.isNotBlank() && state != "THINKING" && state != "READING FILE", shape = CircleShape, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(40.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("↑", fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
+                            }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                TextButton(onClick = { launchVoiceInput() }) { Text("🎙 TALK", color = Color.LightGray) }
+                                Text("BOBBY can make mistakes. Check important information.", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
+                    if (sidebarOpen) {
+                        Row(Modifier.fillMaxSize().background(Color(0x99000000))) {
+                            Column(Modifier.width(286.dp).fillMaxHeight().background(Color(0xFF171717)).padding(12.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("BOBBY", color = Color.White, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                                    TextButton(onClick = { sidebarOpen = false }) { Text("✕", color = Color.White) }
+                                }
+                                Button(onClick = {
+                                    modeStore.saveHistory(activeMode, chat.toList())
+                                    chat.clear()
+                                    chat.add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. What would you like to talk about?"; BobbyMode.WORKING -> "BOBBY WORK MODE READY. What are we working on?"; BobbyMode.DARK -> "DARK MODE ACTIVE. What would you like to research?" }))
+                                    sidebarOpen = false
+                                }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("+ New chat") }
+                                Text("CURRENT CONVERSATION", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 10.dp))
+                                Text("History is saved locally by operating mode.", color = Color.LightGray, modifier = Modifier.padding(10.dp), style = MaterialTheme.typography.bodySmall)
+                                HorizontalDivider(color = Color(0xFF333333))
+                                Text("BOBBY TOOLS", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
+                                @Composable fun drawerAction(label: String, action: () -> Unit) {
+                                    TextButton(onClick = { sidebarOpen = false; action() }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)) {
+                                        Text(label, color = Color.White, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                                drawerAction("Memory vault") { memoryItems = memoryStore.list(); memoryOpen = true }
+                                drawerAction("Add file") { filePicker.launch(arrayOf("*/*")) }
+                                drawerAction("AI settings") { settingsOpen = true }
+                                drawerAction("Add plugins") { pluginsOpen = true }
+                                drawerAction("ECC agent") { agentHistory = agentRuntime.recentTasks(); agentOpen = true }
+                                drawerAction("APK updates") { updateOpen = true; updateStatus = "Ready to check GitHub releases."; pendingUpdate = null }
+                                drawerAction("Offline AI") { offlineStatus = offlineStore.status().note; offlineOpen = true }
+                                drawerAction("Web research") { webResearchOpen = true }
+                                drawerAction("Dexter financial research") { dexterOpen = true }
+                                drawerAction("Trader skills • 11 tools") { traderSkillsOpen = true }
+                                drawerAction("Creative studio") { creativeStudioOpen = true }
+                                drawerAction("3D robot") { robot3dOpen = true }
+                                drawerAction("Custom BOBBY voice") { voiceCloneOpen = true }
+                                drawerAction("Offline voice library") { offlineVoiceLibraryOpen = true }
+                                drawerAction("Gmail • Calendar • Social") { integrationsOpen = true }
+                                drawerAction("Permissions") { permissionsOpen = true }
+                                drawerAction("See my screen") { screenCaptureLauncher.launch((appContext.getSystemService(android.content.Context.MEDIA_PROJECTION_SERVICE) as android.media.projection.MediaProjectionManager).createScreenCaptureIntent()) }
+                                drawerAction("Deriv connect") { derivOpen = true }
+                                drawerAction("Floating robot") { onToggleOverlay() }
+                                drawerAction("My profile") { onboardingOpen = true }
+                                drawerAction("Style the avatar") { avatarStudioOpen = true }
+                                drawerAction("Check today's weather") {
+                                    val city = profile?.city.orEmpty()
+                                    if (city.isBlank()) weatherText = "Add your city in MY PROFILE first."
+                                    else {
+                                        weatherLoading = true
+                                        Thread {
+                                            val result = runCatching { BobbyWeather.today(city) }.getOrElse { "Weather unavailable: " + (it.message ?: "network error") }
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post { weatherText = result; weatherLoading = false }
+                                        }.start()
+                                    }
+                                }
+                                drawerAction("Share conversation") {
+                                    val transcript = chat.takeLast(12).joinToString("\\n\\n") { line -> (if (line.fromBobby) "BOBBY: " else "YOU: ") + line.text }
+                                    runCatching { BobbyCommunicationBridge.shareText(appContext, transcript, "Share BOBBY conversation") }
+                                }
+                                drawerAction("Clear this mode's history") {
+                                    modeStore.clearHistory(activeMode)
+                                    chat.clear()
+                                    chat.add(ChatLine(true, "This mode's saved conversation history was cleared."))
+                                }
+                                Spacer(Modifier.height(14.dp))
+                                Text("Diablo • BOBBY", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
+                            }
+                            Spacer(Modifier.weight(1f).fillMaxHeight().clickable { sidebarOpen = false })
+                        }
+                    }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    BasicTextField(
-                        value = draft, onValueChange = { draft = it },
-                        modifier = Modifier.weight(1f).background(Panel, RoundedCornerShape(18.dp)).padding(14.dp),
-                        textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
-                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Neon),
-                        decorationBox = { inner -> if (draft.isEmpty()) Text("Talk to Bobby…", color = Color.Gray); inner() }
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = { send(draft) }, colors = ButtonDefaults.buttonColors(containerColor = Neon)) { Text("SEND") }
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(modifier = Modifier.weight(1f), onClick = { launchVoiceInput() }) { Text("🎙 TALK") }
-                    OutlinedButton(modifier = Modifier.weight(1f), onClick = onInstallVoice) { Text("⬇ VOICE DATA") }
-                }
-                Text(
-                    if (aiEnabled) "AI connected by your saved provider settings. Voice output uses your installed Android TTS voice."
-                    else "Offline starter chat is active. Add your AI provider key in AI SETTINGS for intelligent online conversation. Voice data installs through Android TTS.",
-                    color = Color.Gray, style = MaterialTheme.typography.labelSmall
-                )
                 if (onboardingOpen) {
                     BobbyOnboarding(
                         initial = profile,
