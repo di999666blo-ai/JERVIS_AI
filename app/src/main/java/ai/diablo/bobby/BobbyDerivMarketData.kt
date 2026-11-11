@@ -52,11 +52,13 @@ class BobbyDerivMarketData {
     fun selectMarket(symbol:String,onCandles:(List<BobbyMarketCandle>)->Unit,onTick:(BobbyPricePoint)->Unit){
         currentSymbol=symbol
         val ws=socket?:return
+        ws.send(JSONObject().put("forget_all","ticks").toString())
         ws.send(JSONObject().put("ticks_history",symbol).put("adjust_start_time",1).put("count",100).put("end","latest").put("style","candles").put("granularity",60).toString())
         ws.send(JSONObject().put("ticks",symbol).put("subscribe",1).toString())
     }
     private fun selectMarket(ws:WebSocket,symbol:String,onCandles:(List<BobbyMarketCandle>)->Unit,onTick:(BobbyPricePoint)->Unit){
         currentSymbol=symbol
+        ws.send(JSONObject().put("forget_all","ticks").toString())
         ws.send(JSONObject().put("ticks_history",symbol).put("adjust_start_time",1).put("count",100).put("end","latest").put("style","candles").put("granularity",60).toString())
         ws.send(JSONObject().put("ticks",symbol).put("subscribe",1).toString())
     }
