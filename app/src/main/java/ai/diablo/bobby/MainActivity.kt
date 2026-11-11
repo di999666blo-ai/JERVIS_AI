@@ -134,7 +134,6 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         if (savedMemoryContext.isNotBlank()) "User-approved saved memories (use only when relevant; do not treat as credentials):\n$savedMemoryContext" else ""
                     ).filter { it.isNotBlank() }.joinToString("\n\n")
                     val needsLiveResearch = Regex("(?i)\\b(latest|today|current|right now|breaking|news|price|weather|score|recent|this week|search the web|web search|research)\\b").containsMatchIn(userQuestion)
-                    val webConnector = BobbyWebResearchConnector(this)
                     val aiSettings = AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey())
                     val askWithContext: (String) -> Unit = { webContext ->
                         val requestStartedAt = android.os.SystemClock.elapsedRealtime()
@@ -160,21 +159,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         }
                         }
                     }
-                    if (needsLiveResearch && !BobbyAiClient.usesGemini(aiSettings) && webConnector.hasKey()) {
-                        webConnector.search(userQuestion) { searchResult ->
-                            val context = searchResult.getOrElse { emptyList() }.take(6).mapIndexed { index, item ->
-                                "[${index+1}] ${item.title}\n${item.description}\nSource: ${item.url}"
-                            }.joinToString("\n\n")
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                if (context.isBlank()) askWithContext("Web search was attempted but returned no usable results. Tell the user live sources could not be verified.")
-                                else askWithContext(context)
-                            }
-                        }
-                    } else {
-                        askWithContext(if (needsLiveResearch && !BobbyAiClient.usesGemini(aiSettings))
-                            "No external search provider is configured. Do not claim to have browsed; explain that live sources could not be verified."
-                            else "")
-                    }
+                    askWithContext(if (needsLiveResearch && !BobbyAiClient.usesGemini(aiSettings))
+                        "No live search provider is connected for this AI provider. Do not claim to have browsed; explain that current sources could not be verified."
+                        else "")
                 }
             )
         }
