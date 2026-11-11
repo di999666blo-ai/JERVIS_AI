@@ -58,6 +58,14 @@
             </intent-filter>
         </activity>
         <activity android:name=".BobbyLearningActivity" android:exported="false" />
+        <activity android:name=".BobbyOAuthCallbackActivity" android:exported="true">
+            <intent-filter android:label="BOBBY OAuth callback">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ai.diablo.bobby" android:host="oauth" android:path="/callback" />
+            </intent-filter>
+        </activity>
                 <activity android:name=".BobbyCapabilityHubActivity" android:exported="false" />
             <activity android:name=".BobbyChartAgentsActivity" android:exported="false" />
     </application>
