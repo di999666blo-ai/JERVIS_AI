@@ -323,6 +323,9 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
                 }
                 if (outputPath.isNotBlank() && File(outputPath).exists()) {
                     Text("READY TO EXPORT • " + File(outputPath).name, color = Color(0xFFFF1744), style = MaterialTheme.typography.bodySmall)
+                    if (File(outputPath).extension.lowercase() in listOf("mp4", "m4v", "3gp", "mp3", "m4a", "aac", "wav", "ogg")) {
+                        BobbyGeneratedMediaPreview(outputPath, Modifier.fillMaxWidth())
+                    }
                     Button(onClick = { export.launch(File(outputPath).name) }, modifier = Modifier.fillMaxWidth()) { Text("EXPORT TO PHONE") }
                 }
                 OutlinedButton(enabled = !busy, onClick = onOpenImage3d, modifier = Modifier.fillMaxWidth()) { Text("OPEN IMAGE & 3D GENERATION") }
