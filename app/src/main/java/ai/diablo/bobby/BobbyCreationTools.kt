@@ -135,7 +135,7 @@ ${body}
                         responseUrl = state.optString("response_url").ifBlank { responseUrl }
                         break
                     }
-                    require(status != "FAILED") { "Generation failed: " + state.toString().take(500) }
+                    require(status !in setOf("FAILED", "CANCELED", "EXPIRED")) { "Generation failed: " + state.toString().take(500) }
                 }
                 require(completed) { "Generation timed out. Check provider history before retrying." }
                 require(responseUrl.startsWith("https://queue.fal.run/")) { "Provider returned an invalid result URL." }
@@ -212,6 +212,9 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
     var videoPrompt by remember { mutableStateOf("") }
     var audioText by remember { mutableStateOf("") }
     var audioVoice by remember { mutableStateOf("Rachel") }
+    var musicPrompt by remember { mutableStateOf("") }
+    var musicDurationSeconds by remember { mutableStateOf("30") }
+    var musicInstrumental by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Create documents locally or connect fal for video and speech generation.") }
     var outputPath by remember { mutableStateOf("") }
@@ -230,7 +233,7 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
         text = {
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("FILES", "VIDEO", "AUDIO").forEach { item ->
+                    listOf("FILES", "VIDEO", "AUDIO", "MUSIC").forEach { item ->
                         FilterChip(selected = tab == item, onClick = { tab = item }, label = { Text(item) })
                     }
                 }
@@ -260,14 +263,14 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
                     }
                     Text(if (engine.hasFalKey()) "FAL KEY SAVED" else "FAL NOT CONNECTED", color = Color(0xFFFF1744), style = MaterialTheme.typography.labelSmall)
                     if (tab == "VIDEO") {
-                        Text("MiniMax H3 Max • 5-second 768P video • MP4")
+                        Text("Seedance 2.5 • 5-second 720p video • synchronized audio • MP4")
                         OutlinedTextField(value = videoPrompt, onValueChange = { videoPrompt = it.take(5000) }, label = { Text("Describe your video") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                         Button(enabled = !busy && engine.hasFalKey() && videoPrompt.isNotBlank(), onClick = {
                             busy = true
-                            val input = JSONObject().put("prompt", videoPrompt.trim()).put("duration", 5)
-                                .put("resolution", "768P").put("prompt_expansion_mode", "balanced")
-                                .put("enable_safety_checker", true).put("aspect_ratio", "16:9")
-                            engine.generateFal("minimax/h3-max/text-to-video", input, "video", "mp4",
+                            val input = JSONObject().put("prompt", videoPrompt.trim()).put("duration", "5")
+                                .put("resolution", "720p").put("generate_audio", true)
+                                .put("aspect_ratio", "16:9").put("bitrate_mode", "standard").put("codec", "H264")
+                            engine.generateFal("bytedance/seedance-2.5/us/text-to-video", input, "video", "mp4",
                                 { message -> handler.post { status = message } }) { result ->
                                 handler.post {
                                     busy = false
@@ -276,8 +279,8 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
                                 }
                             }
                         }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "GENERATING VIDEO…" else "GENERATE VIDEO") }
-                    } else {
-                        Text("ElevenLabs v4 • MP3 • Rachel is the default voice. You can change the voice preset.")
+                    } else if (tab == "AUDIO") {
+                        Text("ElevenLabs v4 • expressive text-to-speech • MP3. Rachel is the default voice; enter another supported voice name if preferred.")
                         OutlinedTextField(value = audioText, onValueChange = { audioText = it.take(5000) }, label = { Text("Text to speak") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(value = audioVoice, onValueChange = { audioVoice = it.take(60) }, label = { Text("Voice preset") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         Button(enabled = !busy && engine.hasFalKey() && audioText.isNotBlank(), onClick = {
@@ -293,6 +296,29 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
                                 }
                             }
                         }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "GENERATING AUDIO…" else "GENERATE AUDIO") }
+                    } else {
+                        Text("ElevenLabs Music v2.5 • create an original soundtrack or instrumental track • MP3.")
+                        OutlinedTextField(value = musicPrompt, onValueChange = { musicPrompt = it.take(4000) }, label = { Text("Describe the music, mood, genre and instruments") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                        OutlinedTextField(value = musicDurationSeconds, onValueChange = { musicDurationSeconds = it.filter(Char::isDigit).take(3) }, label = { Text("Duration in seconds (3–600)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Instrumental only")
+                            Switch(checked = musicInstrumental, onCheckedChange = { musicInstrumental = it })
+                        }
+                        Button(enabled = !busy && engine.hasFalKey() && musicPrompt.isNotBlank() && (musicDurationSeconds.toIntOrNull() ?: 0) in 3..600, onClick = {
+                            busy = true
+                            val input = JSONObject().put("prompt", musicPrompt.trim())
+                                .put("music_length_ms", musicDurationSeconds.toInt() * 1000)
+                                .put("force_instrumental", musicInstrumental).put("enable_safety_checker", true)
+                                .put("output_format", "mp3_48000_192")
+                            engine.generateFal("elevenlabs/music/v2.5", input, "audio", "mp3",
+                                { message -> handler.post { status = message } }) { result ->
+                                handler.post {
+                                    busy = false
+                                    result.onSuccess { outputPath = it.absolutePath; status = "MUSIC READY • " + it.length() / 1024 + " KB" }
+                                        .onFailure { status = "MUSIC FAILED • " + it.message }
+                                }
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "GENERATING MUSIC…" else "GENERATE MUSIC") }
                     }
                 }
                 if (outputPath.isNotBlank() && File(outputPath).exists()) {
