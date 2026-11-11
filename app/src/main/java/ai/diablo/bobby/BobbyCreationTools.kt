@@ -116,7 +116,7 @@ ${body}
             "xlsx" -> writeXlsx(file, body)
             "rtf" -> {
                 val escaped = body.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
-                    .replace(Regex("\\r?\\n"), "\\par\\n")
+                    .replace(Regex("\\r\\n|\\n|\\r"), "\\par ")
                 file.writeText("{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Arial;}}\\f0\\fs22 " + escaped + "}", Charsets.UTF_8)
             }
             "svg" -> {
