@@ -315,7 +315,7 @@ private fun BobbyHome(
     var permissionsOpen by remember { mutableStateOf(false) }
     var derivOpen by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
-    var mcpManagerOpen by remember { mutableStateOf(false) }
+    var mcpManagerOpen by remember { mutableStateOf(false) }\n    var oauthConnectorOpen by remember { mutableStateOf(false) }
     var offlineOpen by remember { mutableStateOf(false) }
     var webResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
@@ -1268,7 +1268,7 @@ private fun BobbyHome(
                             ) {
                                 Text("Connect real services to BOBBY. Choose provider sign-in for supported APIs or connect an MCP server to discover its tools.")
                                 OutlinedButton(onClick = { mcpManagerOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("CONNECT MCP SERVER • MANAGE TOOLS", color = Neon) }
-                                OutlinedButton(onClick = { integrationsOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("OPEN PROVIDER SIGN-IN / OAUTH", color = Neon) }
+                                OutlinedButton(onClick = { oauthConnectorOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("OPEN PROVIDER SIGN-IN / OAUTH", color = Neon) }
                                 OutlinedTextField(
                                     value = pluginSearchDraft,
                                     onValueChange = { pluginSearchDraft = it.take(80) },
@@ -1615,7 +1615,7 @@ private fun BobbyHome(
                 if (integrationsOpen) {
                     BobbyExternalIntegrationsDialog(onDismiss = { integrationsOpen = false })
                 }
-                if (mcpManagerOpen) {\n                    BobbyMcpManagerDialog(onDismiss = { mcpManagerOpen = false })\n                }\n                if (settingsOpen) {
+                if (oauthConnectorOpen) {\n                    BobbyUniversalPluginConnectorDialog(onDismiss = { oauthConnectorOpen = false })\n                }\n                if (mcpManagerOpen) {\n                    BobbyMcpManagerDialog(onDismiss = { mcpManagerOpen = false })\n                }\n                if (settingsOpen) {
                     AlertDialog(
                         onDismissRequest = { settingsOpen = false },
                         title = { Text("Bobby AI connection") },
