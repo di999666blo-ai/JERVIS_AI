@@ -287,6 +287,32 @@ private fun BobbyHome(
     var memorySearchQuery by remember { mutableStateOf("") }
     var editingMemoryId by remember { mutableStateOf<String?>(null) }
     var memoryItems by remember { mutableStateOf(memoryStore.list()) }
+    var driveBackupStatus by remember { mutableStateOf(memoryStore.driveBackupStatus) }
+    val driveFolderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            driveBackupStatus = "CONNECTING TO GOOGLE DRIVE…"
+            memoryStore.connectDriveBackup(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION) { result ->
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    driveBackupStatus = result.getOrElse { "BACKUP ERROR • " + (it.message ?: "Could not connect.") }
+                    if (result.isSuccess) memoryItems = memoryStore.list()
+                }
+            }
+        }
+    }
+    val audioRecorder = remember { BobbyAudioRecorder(appContext) }
+    var recordingActive by remember { mutableStateOf(false) }
+    var recordingPendingPermission by remember { mutableStateOf(false) }
+    var recordingStatus by remember { mutableStateOf("NOT RECORDING") }
+    val recordingPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted && recordingPendingPermission) {
+            recordingPendingPermission = false
+            runCatching { audioRecorder.start(); recordingActive = true; recordingStatus = "RECORDING • microphone active" }
+                .onFailure { recordingStatus = "RECORDING ERROR • " + (it.message ?: "Could not start.") }
+        } else {
+            recordingPendingPermission = false
+            recordingStatus = "MICROPHONE PERMISSION DENIED"
+        }
+    }
     var draft by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("IDLE") }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -982,8 +1008,28 @@ private fun BobbyHome(
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     TextButton(onClick = { launchVoiceInput() }) { Text("🎙 TALK", color = Color.LightGray) }
+                                    TextButton(onClick = {
+                                        if (recordingActive) {
+                                            runCatching {
+                                                val saved = audioRecorder.stop()
+                                                recordingActive = false
+                                                recordingStatus = "SAVED • ${saved.name}"
+                                                chat.add(ChatLine(true, "Recording saved in BOBBY's private Recordings folder: ${saved.name}"))
+                                            }.onFailure {
+                                                recordingActive = false
+                                                recordingStatus = "RECORDING ERROR • " + (it.message ?: "Could not save.")
+                                            }
+                                        } else if (androidx.core.content.ContextCompat.checkSelfPermission(appContext, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                            runCatching { audioRecorder.start(); recordingActive = true; recordingStatus = "RECORDING • microphone active" }
+                                                .onFailure { recordingStatus = "RECORDING ERROR • " + (it.message ?: "Could not start.") }
+                                        } else {
+                                            recordingPendingPermission = true
+                                            recordingPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                                        }
+                                    }) { Text(if (recordingActive) "■ STOP RECORDING" else "● RECORD", color = if (recordingActive) Neon else Color(0xFFFF5252)) }
                                     TextButton(onClick = { onStopSpeech(); state = "IDLE" }) { Text("■ STOP VOICE", color = Neon) }
                                 }
+                                if (recordingActive || recordingStatus != "NOT RECORDING") Text(recordingStatus, color = if (recordingActive) Neon else Color.LightGray, style = MaterialTheme.typography.labelSmall)
                                 Text("BOBBY can make mistakes. Check important information.", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
                             }
                         }
@@ -1128,6 +1174,22 @@ private fun BobbyHome(
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("Saved locally on this phone. Never save passwords, API keys or broker credentials.")
+                                Text("CLOUD BACKUP • $driveBackupStatus", color = if (driveBackupStatus.startsWith("CONNECTED")) Color(0xFF62D6AE) else Neon, style = MaterialTheme.typography.labelSmall)
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    OutlinedButton(onClick = { driveFolderPicker.launch(null) }) { Text("CONNECT GOOGLE DRIVE") }
+                                    OutlinedButton(enabled = driveBackupStatus.startsWith("CONNECTED"), onClick = {
+                                        driveBackupStatus = "SYNCING…"
+                                        memoryStore.syncDriveBackup { result ->
+                                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                                driveBackupStatus = result.getOrElse { "BACKUP ERROR • " + (it.message ?: "Sync failed.") }
+                                            }
+                                        }
+                                    }) { Text("SYNC NOW") }
+                                }
+                                if (driveBackupStatus.startsWith("CONNECTED")) TextButton(onClick = {
+                                    memoryStore.disconnectDriveBackup()
+                                    driveBackupStatus = "PHONE ONLY"
+                                }) { Text("DISCONNECT DRIVE", color = Neon) }
                                 OutlinedTextField(value = memoryCategory, onValueChange = { memoryCategory = it }, label = { Text("Folder: Personal / Projects / Important Dates / Instructions / General") }, singleLine = true)
                                 OutlinedTextField(value = memoryTitle, onValueChange = { memoryTitle = it }, label = { Text("Memory title") }, singleLine = true)
                                 OutlinedTextField(value = memoryContent, onValueChange = { memoryContent = it }, label = { Text("What should Bobby remember?") }, minLines = 2)
