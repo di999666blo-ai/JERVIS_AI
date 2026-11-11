@@ -130,7 +130,7 @@ class BobbyMemoryStore(context: Context) {\n    private val context = context.ap
         } }
     }
     fun delete(id: String) = synchronized(lock) { writeAll(readAll().filterNot { it.id == id }) }
-    fun clear() = synchronized(lock) { prefs.edit().remove(KEY).apply() }
+    fun clear() = synchronized(lock) { writeAll(emptyList()) }
     fun exportJson(): String = synchronized(lock) { JSONArray().also { a -> readAll().forEach { a.put(toJson(it)) } }.toString(2) }
 
 
