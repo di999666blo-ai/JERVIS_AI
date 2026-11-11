@@ -69,7 +69,7 @@ object BobbyAiClient {
             } catch (error: Exception) {
                 attempt++
                 val message = error.message.orEmpty()
-                val statusCode = Regex("""HTTP (\\d{3})""").find(message)?.groupValues?.get(1)?.toIntOrNull()
+                val statusCode = Regex("""HTTP ([0-9]{3})""").find(message)?.groupValues?.get(1)?.toIntOrNull()
                 val retryableHttp = statusCode == 408 || statusCode == 429 || (statusCode != null && statusCode >= 500)
                 val retryableNetwork = error is java.io.IOException
                 if ((!retryableHttp && !retryableNetwork) || attempt >= 3) throw error
