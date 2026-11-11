@@ -87,6 +87,9 @@ private class BobbyCreationEngine(private val context: Context) {
                 }
             }
             "xml" -> {
+                require(!Regex("<!DOCTYPE|<!ENTITY", RegexOption.IGNORE_CASE).containsMatchIn(body)) {
+                    "XML DTD and entity declarations are blocked for safety."
+                }
                 val parser = android.util.Xml.newPullParser()
                 parser.setInput(body.reader())
                 while (parser.next() != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) { }
@@ -244,6 +247,19 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
                         listOf("pdf", "html", "xml", "json", "txt", "md", "csv", "css", "js", "py").forEach { ext ->
                             FilterChip(selected = fileFormat == ext, onClick = { fileFormat = ext }, label = { Text(ext.uppercase()) })
                         }
+                    }
+                    if (fileFormat == "xml") {
+                        Text("XML WORKSPACE • checks well-formed XML before saving and blocks DTD/entity declarations.", color = Color(0xFFFF1744), style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = {
+                            fileBody = """<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <item id="1">
+        <name>Example</name>
+        <value>Replace this sample with your data</value>
+    </item>
+</root>"""
+                            status = "XML starter template inserted. Edit it, then CREATE XML to validate and save."
+                        }, modifier = Modifier.fillMaxWidth()) { Text("INSERT XML STARTER TEMPLATE") }
                     }
                     OutlinedTextField(value = fileBody, onValueChange = { fileBody = it.take(120000) }, label = { Text("Document content, markup or code") }, minLines = 5, modifier = Modifier.fillMaxWidth())
                     Button(enabled = !busy && fileBody.isNotBlank(), onClick = {
