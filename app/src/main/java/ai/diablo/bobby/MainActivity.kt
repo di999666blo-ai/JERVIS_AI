@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -395,6 +396,30 @@ private fun BobbyHome(
         }
     }
 
+    fun regenerateReply(messageIndex: Int) {
+        if (messageIndex !in chat.indices || !chat[messageIndex].fromBobby) return
+        while (chat.size > messageIndex) chat.removeAt(chat.lastIndex)
+        val history = chat.toList()
+        if (history.none { !it.fromBobby }) {
+            chat.add(ChatLine(true, "There is no user message to regenerate a reply for."))
+            return
+        }
+        state = "THINKING"
+        val done: (Result<String>) -> Unit = { result ->
+            val reply = result.getOrElse { "I couldn't regenerate that reply: \${it.message ?: "unknown error"}." }
+            chat.add(ChatLine(true, reply))
+            state = if (result.isSuccess) "IDLE" else "ERROR"
+            if (result.isSuccess) onSpeak(reply)
+        }
+        if (aiEnabled) onAskAi(history, done)
+        else if (offlineStore.status().installed) {
+            val prompt = history.takeLast(12).joinToString("\\n") { (if (it.fromBobby) "BOBBY: " else "USER: ") + it.text }
+            onAskOffline(prompt, done)
+        } else {
+            chat.add(ChatLine(true, "Connect an AI model in AI SETTINGS to regenerate this response."))
+            state = "IDLE"
+        }
+    }
     fun send(text: String) {
         val clean = text.trim()
         if (clean.isEmpty()) return
@@ -819,7 +844,7 @@ private fun BobbyHome(
                                     }
                                 }
                             }
-                            items(chat) { line ->
+                            itemsIndexed(chat) { messageIndex, line ->
                                 Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), horizontalArrangement = if (line.fromBobby) Arrangement.Start else Arrangement.End, verticalAlignment = Alignment.Top) {
                                     if (line.fromBobby) {
                                         Surface(color = Neon, shape = CircleShape, modifier = Modifier.size(30.dp)) { Box(contentAlignment = Alignment.Center) { Text("B", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) } }
@@ -830,10 +855,26 @@ private fun BobbyHome(
                                             BobbyMessageContent(line.text, line.fromBobby, lightTheme)
                                         }
                                         if (line.fromBobby) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                TextButton(
+                                                    onClick = { clipboardManager.setText(AnnotatedString(line.text)) },
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                                ) { Text("COPY", color = mutedText, style = MaterialTheme.typography.labelSmall) }
+                                                TextButton(
+                                                    onClick = { regenerateReply(messageIndex) },
+                                                    enabled = state != "THINKING" && state != "READING FILE",
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                                ) { Text("REGENERATE", color = Neon, style = MaterialTheme.typography.labelSmall) }
+                                            }
+                                        } else {
                                             TextButton(
-                                                onClick = { clipboardManager.setText(AnnotatedString(line.text)) },
+                                                onClick = {
+                                                    draft = line.text
+                                                    while (chat.size > messageIndex) chat.removeAt(chat.lastIndex)
+                                                },
+                                                enabled = state != "THINKING" && state != "READING FILE",
                                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                                            ) { Text("COPY", color = mutedText, style = MaterialTheme.typography.labelSmall) }
+                                            ) { Text("EDIT", color = mutedText, style = MaterialTheme.typography.labelSmall) }
                                         }
                                     }
                                     if (!line.fromBobby) {
