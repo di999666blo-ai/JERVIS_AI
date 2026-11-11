@@ -398,6 +398,25 @@ private fun BobbyHome(
     var apiKey by remember { mutableStateOf("") }
     var aiEnabled by remember { mutableStateOf(hasSavedKey) }
     var bubbleOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var pendingContactCall by remember { mutableStateOf("") }
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val requested = pendingContactCall
+        pendingContactCall = ""
+        if (granted && requested.isNotBlank()) {
+            runCatching { BobbyAndroidActions.dialContact(appContext, requested) }
+                .onSuccess { name ->
+                    val reply = "I found $name and opened your phone dialer. Please check the contact and tap the call button when you're ready. 📞"
+                    chat.add(ChatLine(true, reply)); onSpeak(reply)
+                }
+                .onFailure { error ->
+                    val reply = error.message ?: "I couldn't open that contact."
+                    chat.add(ChatLine(true, reply)); onSpeak(reply)
+                }
+        } else if (requested.isNotBlank()) {
+            val reply = "I need Contacts permission to find that person. You can allow it in Android app settings."
+            chat.add(ChatLine(true, reply)); onSpeak(reply)
+        }
+    }
     LaunchedEffect(profile) { profile?.reminders()?.forEach { reminder -> if (chat.none { it.text == reminder }) chat.add(0, ChatLine(true, reminder)) } }
     val pulse = rememberInfiniteTransition(label = "bobby-avatar")
     val breathing by pulse.animateFloat(0.96f, 1.045f, infiniteRepeatable(tween(1300, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breathing")
@@ -562,6 +581,26 @@ private fun BobbyHome(
             }.onFailure { error ->
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't set that alarm: " + (error.message ?: "unknown error"))); onSpeak("I couldn't set that alarm."); return
             }
+        }
+        val callContact = Regex("""(?i)^\s*(?:bobby[, ]+)?(?:please\s+)?call\s+(.{2,60}?)\s*[.!]?\s*$""").find(clean)
+        if (callContact != null) {
+            val requested = callContact.groupValues[1].trim().trim('"', '\'')
+            chat.add(ChatLine(false, clean))
+            if (appContext.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                runCatching { BobbyAndroidActions.dialContact(appContext, requested) }
+                    .onSuccess { name ->
+                        val reply = "I found $name and opened your phone dialer. Please check the contact and tap the call button when you're ready. 📞"
+                        chat.add(ChatLine(true, reply)); onSpeak(reply)
+                    }
+                    .onFailure { error ->
+                        val reply = error.message ?: "I couldn't find that contact."
+                        chat.add(ChatLine(true, reply)); onSpeak(reply)
+                    }
+            } else {
+                pendingContactCall = requested
+                contactsPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+            }
+            return
         }
         if (Regex("""(?i)^\s*(?:bobby[, ]+)?(?:read|describe)\s+(?:my\s+)?screen\s*$""").matches(clean)) {
             val screenText = BobbyAccessibilityController.readVisibleText()
