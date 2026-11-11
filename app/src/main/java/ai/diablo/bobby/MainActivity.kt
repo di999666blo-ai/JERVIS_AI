@@ -977,6 +977,7 @@ private fun BobbyHome(
                                 }
                                 drawerAction("◷  History") { chatSearch = ""; sessions = conversationStore.list(activeMode); historyOpen = true }
                                 drawerAction("▣  My Files") { filePicker.launch(arrayOf("*/*")) }
+                                drawerAction("✧  Creative Studio") { creativeStudioOpen = true }
                                 drawerAction("◇  Plugins") { pluginsOpen = true }
                                 drawerAction("⚙  Settings") { settingsOpen = true }
                                 Spacer(Modifier.weight(1f))
@@ -1021,7 +1022,7 @@ private fun BobbyHome(
                             activeSessionId = conversationStore.create(activeMode, listOf(greeting))
                             sessions = conversationStore.list(activeMode)
                             historyOpen = false
-                        }) { Text("NEW CHAT", color = Neon) }
+                        }) { Text("NEW CHAT", color = Neon) } }
                     )
                 }
                 if (conversationToRename != null) {
