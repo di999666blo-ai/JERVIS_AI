@@ -72,15 +72,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             BobbyHome(
                 onSpeak = { text ->
                     neuralVoice.speak(text, configStore.apiKey()) {
-                        if (ttsReady) {
-                            val engine = tts
-                            if (engine != null) {
-                                BobbySpeechLanguage.configureLocalTts(engine, text)
-                                engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, "bobby-reply")
-                            }
-                        }
+                        if (ttsReady) tts?.let { BobbySpeechLanguage.speakLocal(it, text) }
                     }
                 },
+                onStopSpeech = { neuralVoice.stop(); tts?.stop() },
                 onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } },
                 onToggleOverlay = { toggleFloatingRobot() },
                 voiceLaunchToken = voiceLaunchToken,
@@ -225,6 +220,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 @Composable
 private fun BobbyHome(
     onSpeak: (String) -> Unit,
+    onStopSpeech: () -> Unit,
     onInstallVoice: () -> Unit,
     onToggleOverlay: () -> Unit,
     voiceLaunchToken: Int,
@@ -391,6 +387,22 @@ private fun BobbyHome(
         val clean = text.trim()
         if (clean.isEmpty()) return
         val lower = clean.lowercase(Locale.ROOT)
+        if (Regex("""(?i)^\s*(?:stop speaking|stop voice|be quiet|silence)\s*[.!]?\s*$""").matches(clean)) {
+            onStopSpeech()
+            chat.add(ChatLine(false, clean))
+            chat.add(ChatLine(true, "Okay. I’ve stopped speaking."))
+            state = "IDLE"
+            return
+        }
+        if (Regex("""(?i)^\s*(?:repeat that|say that again|repeat your last answer)\s*[.!]?\s*$""").matches(clean)) {
+            val previousReply = chat.lastOrNull { it.fromBobby }?.text
+            if (previousReply.isNullOrBlank()) {
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "There isn't a previous reply to repeat yet."))
+            } else {
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, previousReply)); onSpeak(previousReply)
+            }
+            return
+        }
         val introduction = Regex("""(?i)\b(?:meet|introduce)\s+(?:my\s+)?(?:friend|guest|buddy)?\s*([\p{L}][\p{L} .'-]{1,45})$""").find(clean)
         if (introduction != null && listOf("meet", "introduce").any { lower.startsWith(it) }) {
             val guestName = runCatching { socialCompanion.introduceGuest(introduction.groupValues[1]) }.getOrElse {
@@ -702,6 +714,10 @@ private fun BobbyHome(
         state = "LISTENING"
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, Locale.getDefault().toLanguageTag())
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Talk naturally to Bobby")
         }
         runCatching { recognizer.launch(intent) }.onFailure { state = "VOICE UNAVAILABLE" }
@@ -824,7 +840,10 @@ private fun BobbyHome(
                                 Button(onClick = { send(draft) }, enabled = draft.isNotBlank() && state != "THINKING" && state != "READING FILE", shape = CircleShape, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(40.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("↑", fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
                             }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                TextButton(onClick = { launchVoiceInput() }) { Text("🎙 TALK", color = Color.LightGray) }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    TextButton(onClick = { launchVoiceInput() }) { Text("🎙 TALK", color = Color.LightGray) }
+                                    TextButton(onClick = { onStopSpeech(); state = "IDLE" }) { Text("■ STOP VOICE", color = Neon) }
+                                }
                                 Text("BOBBY can make mistakes. Check important information.", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
                             }
                         }
