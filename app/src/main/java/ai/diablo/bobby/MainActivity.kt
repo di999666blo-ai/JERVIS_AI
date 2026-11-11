@@ -311,6 +311,9 @@ private fun BobbyHome(
     var traderSkillsOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
     var sidebarOpen by remember { mutableStateOf(false) }
+    val uiPrefs = remember { appContext.getSharedPreferences("bobby_ui_preferences", android.content.Context.MODE_PRIVATE) }
+    var lightTheme by remember { mutableStateOf(uiPrefs.getBoolean("light_theme", false)) }
+    var chatSearch by remember { mutableStateOf("") }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
     var webQuery by remember { mutableStateOf("") }
     var webKeyDraft by remember { mutableStateOf("") }
@@ -693,23 +696,29 @@ private fun BobbyHome(
         if (voiceLaunchToken > 0) launchVoiceInput()
     }
 
-    MaterialTheme(colorScheme = darkColorScheme(background = Void, surface = Panel, primary = Neon, onBackground = Color.White, onSurface = Color.White)) {
-        Surface(Modifier.fillMaxSize(), color = Void) {
+    val pageBg = if (lightTheme) Color(0xFFF7F7F8) else Void
+    val panelBg = if (lightTheme) Color.White else Panel
+    val chatBg = if (lightTheme) Color(0xFFF7F7F8) else Color(0xFF212121)
+    val mainText = if (lightTheme) Color(0xFF171717) else Color.White
+    val mutedText = if (lightTheme) Color(0xFF666666) else Color.LightGray
+    MaterialTheme(colorScheme = if (lightTheme) lightColorScheme(background = pageBg, surface = panelBg, primary = Neon, onBackground = mainText, onSurface = mainText) else darkColorScheme(background = Void, surface = Panel, primary = Neon, onBackground = Color.White, onSurface = Color.White)) {
+        Surface(Modifier.fillMaxSize(), color = pageBg) {
             Box(Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().background(Void)) {
+            Column(Modifier.fillMaxSize().background(pageBg)) {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     Column(Modifier.fillMaxSize()) {
-                        Row(Modifier.fillMaxWidth().background(Color(0xFF171717)).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().background(if (lightTheme) Color.White else Color(0xFF171717)).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                             TextButton(onClick = { sidebarOpen = true }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("☰", color = Color.White, fontSize = 23.sp) }
                             Column(Modifier.weight(1f)) {
-                                Text("BOBBY GPT", color = Color.White, style = MaterialTheme.typography.titleLarge)
-                                Text(when (activeMode) { BobbyMode.FRIENDLY -> "Friendly mode"; BobbyMode.WORKING -> "Work mode"; BobbyMode.DARK -> "Dark mode" }, color = Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                                Text("BOBBY", color = mainText, style = MaterialTheme.typography.titleLarge)
+                                Text(when (activeMode) { BobbyMode.FRIENDLY -> "Friendly mode"; BobbyMode.WORKING -> "Work mode"; BobbyMode.DARK -> "Dark mode" }, color = mutedText, style = MaterialTheme.typography.labelSmall)
                             }
+                            TextButton(onClick = { lightTheme = !lightTheme; uiPrefs.edit().putBoolean("light_theme", lightTheme).apply() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(if (lightTheme) "☀" else "☾", color = mainText, fontSize = 20.sp) }
                             Surface(color = Color(0xFF12382F), shape = RoundedCornerShape(20.dp)) {
                                 Text(if (aiEnabled) "● AI READY" else if (offlineStore.status().installed) "● OFFLINE" else "● LOCAL", color = Color(0xFF62D6AE), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelSmall)
                             }
                         }
-                        Row(Modifier.fillMaxWidth().background(Color(0xFF212121)).padding(horizontal = 10.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(Modifier.fillMaxWidth().background(chatBg).padding(horizontal = 10.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf(BobbyMode.FRIENDLY to "FRIENDLY", BobbyMode.WORKING to "WORK", BobbyMode.DARK to "DARK").forEach { (mode, label) ->
                                 TextButton(onClick = {
                                     if (activeMode != mode) {
@@ -725,7 +734,31 @@ private fun BobbyHome(
                         if (activeMode == BobbyMode.DARK) {
                             Text("Tor Browser protects browsing inside Tor Browser only. BOBBY's AI/API traffic is not routed through Tor.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(Color(0xFF2A2117)).padding(10.dp))
                         }
-                        LazyColumn(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF212121)), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+                        LazyColumn(Modifier.weight(1f).fillMaxWidth().background(chatBg), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+                            if (chat.size <= 1) {
+                                item {
+                                    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Text("What would you like to do?", color = mainText, style = MaterialTheme.typography.titleMedium)
+                                        listOf("Explain something" to "Break down a difficult topic clearly.", "Help me plan" to "Turn a goal into practical next steps.", "Research a topic" to "Compare information and evidence.", "Work with a file" to "Analyse a document or image.").chunked(2).forEach { row ->
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                row.forEach { pair ->
+                                                    Surface(Modifier.weight(1f).clickable {
+                                                        val prompt = when (pair.first) {
+                                                            "Explain something" -> "Explain a difficult topic to me clearly, step by step."
+                                                            "Help me plan" -> "Help me make a practical plan for my current goal."
+                                                            "Research a topic" -> "Help me research a topic and distinguish verified facts from assumptions."
+                                                            else -> "I want to upload a file for you to analyse."
+                                                        }
+                                                        if (pair.first == "Work with a file") filePicker.launch(arrayOf("*/*")) else send(prompt)
+                                                    }, color = panelBg, shape = RoundedCornerShape(12.dp), border = androidx.compose.foundation.BorderStroke(1.dp, if (lightTheme) Color(0xFFE5E5E5) else Color(0xFF383838))) {
+                                                        Column(Modifier.padding(12.dp)) { Text(pair.first, color = mainText, style = MaterialTheme.typography.titleSmall); Text(pair.second, color = mutedText, style = MaterialTheme.typography.bodySmall) }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             items(chat) { line ->
                                 Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), horizontalArrangement = if (line.fromBobby) Arrangement.Start else Arrangement.End, verticalAlignment = Alignment.Top) {
                                     if (line.fromBobby) {
@@ -751,9 +784,9 @@ private fun BobbyHome(
                                 }
                             }
                         }
-                        Column(Modifier.fillMaxWidth().background(Color(0xFF212121)).padding(horizontal = 12.dp, vertical = 10.dp)) {
-                            Row(Modifier.fillMaxWidth().background(Color(0xFF303030), RoundedCornerShape(24.dp)).padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                BasicTextField(value = draft, onValueChange = { draft = it }, modifier = Modifier.weight(1f).padding(vertical = 10.dp), textStyle = TextStyle(color = Color.White, fontSize = 16.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(Neon), decorationBox = { inner -> if (draft.isEmpty()) Text("Message BOBBY...", color = Color.Gray); inner() })
+                        Column(Modifier.fillMaxWidth().background(chatBg).padding(horizontal = 12.dp, vertical = 10.dp)) {
+                            Row(Modifier.fillMaxWidth().background(if (lightTheme) Color.White else Color(0xFF303030), RoundedCornerShape(24.dp)).padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                BasicTextField(value = draft, onValueChange = { draft = it }, modifier = Modifier.weight(1f).padding(vertical = 10.dp), textStyle = TextStyle(color = mainText, fontSize = 16.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(Neon), decorationBox = { inner -> if (draft.isEmpty()) Text("Message BOBBY...", color = mutedText); inner() })
                                 TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }, contentPadding = PaddingValues(6.dp)) { Text("+", color = Color.LightGray, fontSize = 22.sp) }
                                 Button(onClick = { send(draft) }, enabled = draft.isNotBlank() && state != "THINKING" && state != "READING FILE", shape = CircleShape, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(40.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("↑", fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
                             }
@@ -765,9 +798,9 @@ private fun BobbyHome(
                     }
                     if (sidebarOpen) {
                         Row(Modifier.fillMaxSize().background(Color(0x99000000))) {
-                            Column(Modifier.width(286.dp).fillMaxHeight().background(Color(0xFF171717)).padding(12.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(Modifier.width(286.dp).fillMaxHeight().background(panelBg).padding(12.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text("BOBBY", color = Color.White, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                                    Text("BOBBY", color = mainText, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
                                     TextButton(onClick = { sidebarOpen = false }) { Text("✕", color = Color.White) }
                                 }
                                 Button(onClick = {
@@ -776,8 +809,13 @@ private fun BobbyHome(
                                     chat.add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. What would you like to talk about?"; BobbyMode.WORKING -> "BOBBY WORK MODE READY. What are we working on?"; BobbyMode.DARK -> "DARK MODE ACTIVE. What would you like to research?" }))
                                     sidebarOpen = false
                                 }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("+ New chat") }
-                                Text("CURRENT CONVERSATION", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 10.dp))
-                                Text("History is saved locally by operating mode.", color = Color.LightGray, modifier = Modifier.padding(10.dp), style = MaterialTheme.typography.bodySmall)
+                                Text("SEARCH THIS CONVERSATION", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 10.dp))
+                                OutlinedTextField(value = chatSearch, onValueChange = { chatSearch = it.take(100) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Find words in this chat") })
+                                val matchingLines = chat.withIndex().filter { chatSearch.isNotBlank() && it.value.text.contains(chatSearch, ignoreCase = true) }
+                                if (chatSearch.isNotBlank()) {
+                                    Text(matchingLines.size.toString() + " matching messages", color = mutedText, style = MaterialTheme.typography.labelSmall)
+                                    matchingLines.take(8).forEach { match -> TextButton(onClick = { sidebarOpen = false }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(6.dp)) { Text((if (match.value.fromBobby) "BOBBY: " else "YOU: ") + match.value.text.take(90), color = mainText, style = MaterialTheme.typography.bodySmall) }
+                                } else Text("Your conversation is saved locally for this operating mode.", color = mutedText, modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.bodySmall)
                                 HorizontalDivider(color = Color(0xFF333333))
                                 Text("BOBBY TOOLS", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
                                 @Composable fun drawerAction(label: String, action: () -> Unit) {
