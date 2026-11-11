@@ -125,6 +125,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         "- ${item.category}: ${item.title} — ${item.content.take(700)}"
                     }
                     val completeContext = listOf(
+                        "BOBBY IDENTITY: You are BOBBY, a girl (female AI assistant). Speak about yourself using she/her pronouns when relevant. Keep your established name BOBBY. Never describe yourself as a man or boy. Be confident and natural; do not repeatedly announce your gender unless it is relevant.",
                         profileContext,
                         socialCompanion.contextInstruction(),
                         if (savedMemoryContext.isNotBlank()) "User-approved saved memories (use only when relevant; do not treat as credentials):\n$savedMemoryContext" else ""
@@ -774,7 +775,11 @@ private fun BobbyHome(
     }
 
     LaunchedEffect(voiceLaunchToken) {
-        if (voiceLaunchToken > 0) launchVoiceInput()
+        if (voiceLaunchToken > 0) {
+            onSpeak("I'm awake, sir. Bobby is here, and I'm listening.")
+            kotlinx.coroutines.delay(1900)
+            launchVoiceInput()
+        }
     }
 
     val pageBg = if (lightTheme) Color(0xFFF7F7F8) else Void
