@@ -29,6 +29,8 @@ import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlin.concurrent.thread
 
 private class BobbyCreationEngine(private val context: Context) {
@@ -45,7 +47,7 @@ private class BobbyCreationEngine(private val context: Context) {
         require(body.isNotBlank()) { "Enter some content first." }
         require(body.length <= 120000) { "Content is limited to 120,000 characters." }
         val ext = format.lowercase()
-        require(ext in listOf("pdf", "html", "xml", "json", "txt", "md", "csv", "css", "js", "py")) { "Unsupported file format." }
+        require(ext in listOf("pdf", "docx", "xlsx", "rtf", "html", "xml", "json", "txt", "md", "csv", "tsv", "yaml", "yml", "toml", "sql", "svg", "css", "js", "ts", "py", "kt", "java")) { "Unsupported file format." }
         val name = title.trim().ifBlank { "bobby_file" }.replace(Regex("[^A-Za-z0-9._-]"), "_").take(48)
         val dir = File(context.filesDir, "creative_studio").apply { mkdirs() }
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
@@ -110,10 +112,81 @@ ${body}
 </body></html>"""
                 file.writeText(html, Charsets.UTF_8)
             }
+            "docx" -> writeDocx(file, body)
+            "xlsx" -> writeXlsx(file, body)
+            "rtf" -> {
+                val escaped = body.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
+                    .replace(Regex("\\r?\\n"), "\\par\\n")
+                file.writeText("{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Arial;}}\\f0\\fs22 " + escaped + "}", Charsets.UTF_8)
+            }
+            "svg" -> {
+                require(body.trimStart().startsWith("<svg", true) || body.trimStart().startsWith("<?xml")) { "SVG must contain an <svg> root element." }
+                require(!Regex("<!DOCTYPE|<!ENTITY", RegexOption.IGNORE_CASE).containsMatchIn(body)) { "SVG DTD and entity declarations are blocked." }
+                val parser = android.util.Xml.newPullParser()
+                parser.setInput(body.reader())
+                while (parser.next() != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) { }
+                file.writeText(body, Charsets.UTF_8)
+            }
+            "csv" -> {
+                require(body.lines().all { it.count { ch -> ch == '"' } % 2 == 0 }) { "CSV contains an unmatched quotation mark." }
+                file.writeText(body, Charsets.UTF_8)
+            }
             else -> file.writeText(body, Charsets.UTF_8)
         }
         require(file.exists() && file.length() > 0) { "File creation failed." }
         return file
+    }
+
+
+    private fun xmlEscape(value: String): String = value.replace("&", "&amp;")
+        .replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;")
+
+    private fun writeZip(file: File, entries: Map<String, String>) {
+        ZipOutputStream(file.outputStream()).use { zip ->
+            entries.forEach { (name, content) ->
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(content.toByteArray(Charsets.UTF_8))
+                zip.closeEntry()
+            }
+        }
+    }
+
+    private fun writeDocx(file: File, body: String) {
+        val paragraphs = body.lines().joinToString("") { line ->
+            "<w:p><w:r><w:t xml:space=\"preserve\">\${xmlEscape(line)}</w:t></w:r></w:p>"
+        }
+        val document = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>$paragraphs<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>"""
+        writeZip(file, mapOf(
+            "[Content_Types].xml" to """<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>""",
+            "_rels/.rels" to """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>""",
+            "word/document.xml" to document
+        ))
+    }
+
+    private fun writeXlsx(file: File, body: String) {
+        val rows = body.lines().map { it.split("\t") }
+        val sheetRows = rows.mapIndexed { rowIndex, cells ->
+            val cellXml = cells.mapIndexed { colIndex, value ->
+                var n = colIndex + 1
+                var column = ""
+                while (n > 0) {
+                    val rem = (n - 1) % 26
+                    column = ('A'.code + rem).toChar() + column
+                    n = (n - 1) / 26
+                }
+                "<c r=\"$column\${rowIndex + 1}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">\${xmlEscape(value)}</t></is></c>"
+            }.joinToString("")
+            "<row r=\"\${rowIndex + 1}\">$cellXml</row>"
+        }.joinToString("")
+        val sheet = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>$sheetRows</sheetData></worksheet>"""
+        writeZip(file, mapOf(
+            "[Content_Types].xml" to """<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>""",
+            "_rels/.rels" to """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>""",
+            "xl/workbook.xml" to """<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="BOBBY Data" sheetId="1" r:id="rId1"/></sheets></workbook>""",
+            "xl/_rels/workbook.xml.rels" to """<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>""",
+            "xl/worksheets/sheet1.xml" to sheet
+        ))
     }
 
     fun generateFal(endpoint: String, input: JSONObject, resultField: String, extension: String, progress: (String) -> Unit, done: (Result<File>) -> Unit) {
@@ -241,10 +314,10 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
                     }
                 }
                 if (tab == "FILES") {
-                    Text("Create PDF, HTML, XML, JSON, text, Markdown, CSV and code files directly on this phone. PDF, XML and JSON are validated before saving.")
+                    Text("Create PDF, Word DOCX, Excel XLSX, RTF, HTML, XML, JSON, SVG, CSV/TSV, YAML, TOML, SQL, Markdown and source-code files.")
                     OutlinedTextField(value = fileTitle, onValueChange = { fileTitle = it.take(80) }, label = { Text("File name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        listOf("pdf", "html", "xml", "json", "txt", "md", "csv", "css", "js", "py").forEach { ext ->
+                        listOf("pdf", "docx", "xlsx", "rtf", "html", "xml", "json", "svg", "txt", "md", "csv", "tsv", "yaml", "toml", "sql", "css", "js", "ts", "py", "kt", "java").forEach { ext ->
                             FilterChip(selected = fileFormat == ext, onClick = { fileFormat = ext }, label = { Text(ext.uppercase()) })
                         }
                     }
