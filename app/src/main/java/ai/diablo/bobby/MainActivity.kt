@@ -320,6 +320,7 @@ private fun BobbyHome(
     var offlineOpen by remember { mutableStateOf(false) }
     var webResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
+    var image3dStudioOpen by remember { mutableStateOf(false) }
     var robot3dOpen by remember { mutableStateOf(false) }
     val avatarStore = remember { BobbyAvatarStore(appContext) }
     var avatarLook by remember { mutableStateOf(avatarStore.load()) }
@@ -1566,7 +1567,10 @@ private fun BobbyHome(
                     )
                 }
                 if (creativeStudioOpen) {
-                    BobbyCreativeStudioDialog(onDismiss = { creativeStudioOpen = false }, openAiApiKey = BobbyConfigStore(appContext).apiKey())
+                    BobbyCreationToolsDialog(onDismiss = { creativeStudioOpen = false }, onOpenImage3d = { creativeStudioOpen = false; image3dStudioOpen = true })
+                }
+                if (image3dStudioOpen) {
+                    BobbyCreativeStudioDialog(onDismiss = { image3dStudioOpen = false }, openAiApiKey = BobbyConfigStore(appContext).apiKey())
                 }
                 if (robot3dOpen) {
                     BobbyRobot3DDialog(onDismiss = { robot3dOpen = false })
