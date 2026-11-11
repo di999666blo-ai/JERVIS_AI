@@ -324,6 +324,7 @@ private fun BobbyHome(
     var integrationsOpen by remember { mutableStateOf(false) }
     var dexterOpen by remember { mutableStateOf(false) }
     var traderSkillsOpen by remember { mutableStateOf(false) }
+    var chartAgentsOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
     var sidebarOpen by remember { mutableStateOf(false) }
     val uiPrefs = remember { appContext.getSharedPreferences("bobby_ui_preferences", android.content.Context.MODE_PRIVATE) }
@@ -909,6 +910,7 @@ private fun BobbyHome(
                                 drawerAction("Web research") { webResearchOpen = true }
                                 drawerAction("Dexter financial research") { dexterOpen = true }
                                 drawerAction("Trader skills • 11 tools") { traderSkillsOpen = true }
+                                drawerAction("Charts & AI agents") { chartAgentsOpen = true }
                                 drawerAction("Creative studio") { creativeStudioOpen = true }
                                 drawerAction("3D robot") { robot3dOpen = true }
                                 drawerAction("Custom BOBBY voice") { voiceCloneOpen = true }
@@ -1506,6 +1508,15 @@ private fun BobbyHome(
                             dexterOpen = false
                             send(prompt)
                         }
+                    )
+                }
+                if (chartAgentsOpen) {
+                    AlertDialog(
+                        onDismissRequest = { chartAgentsOpen = false },
+                        title = { Text("BOBBY CHART & AGENT DESK") },
+                        text = { Text("Open the live Deriv chart, market selector, Chart Analysis Agent and Risk Agent. Market data is read-only; no orders are placed.") },
+                        confirmButton = { TextButton(onClick = { chartAgentsOpen = false; appContext.startActivity(Intent(appContext, BobbyChartAgentsActivity::class.java)) }) { Text("OPEN CHART DESK", color = Neon) } },
+                        dismissButton = { TextButton(onClick = { chartAgentsOpen = false }) { Text("CLOSE") } }
                     )
                 }
                 if (traderSkillsOpen) {
