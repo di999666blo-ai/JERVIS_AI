@@ -1,6 +1,10 @@
 package ai.diablo.bobby
 
 import android.content.Context
+import android.net.Uri
+import android.provider.DocumentsContract
+import android.provider.OpenableColumns
+import java.util.concurrent.Executors
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
@@ -14,9 +18,62 @@ data class BobbyMemory(
 )
 
 /** Local, user-controlled memory. Secrets are rejected/redacted and never used for credentials. */
-class BobbyMemoryStore(context: Context) {
+class BobbyMemoryStore(context: Context) {\n    private val context = context.applicationContext
     private val prefs = context.getSharedPreferences("bobby_user_memory", Context.MODE_PRIVATE)
     private val lock = Any()
+    private val backupExecutor = Executors.newSingleThreadExecutor()
+    @Volatile private var backupStatusValue = prefs.getString("drive_backup_status", "PHONE ONLY") ?: "PHONE ONLY"
+    val driveBackupStatus: String get() = backupStatusValue
+
+    /** Connects a user-selected Google Drive/SAF folder and creates BOBBY Memory inside it. */
+    fun connectDriveBackup(treeUri: Uri, grantFlags: Int, callback: (Result<String>) -> Unit) {
+        backupExecutor.execute {
+            val result = runCatching {
+                val resolver = contextResolver()
+                val takeFlags = grantFlags and (android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                resolver.takePersistableUriPermission(treeUri, takeFlags)
+                val treeId = DocumentsContract.getTreeDocumentId(treeUri)
+                val children = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeId)
+                var folderUri: Uri? = null
+                resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)?.use { cursor ->
+                    val idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                    val nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                    while (cursor.moveToNext()) {
+                        if (nameCol >= 0 && cursor.getString(nameCol) == "BOBBY Memory" && idCol >= 0) {
+                            folderUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, cursor.getString(idCol))
+                            break
+                        }
+                    }
+                }
+                if (folderUri == null) {
+                    val parent = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeId)
+                    folderUri = DocumentsContract.createDocument(resolver, parent, DocumentsContract.Document.MIME_TYPE_DIR, "BOBBY Memory")
+                }
+                val target = requireNotNull(folderUri) { "Google Drive did not create the BOBBY Memory folder." }
+                prefs.edit().putString("drive_tree_uri", treeUri.toString()).putString("drive_folder_uri", target.toString()).apply()
+                backupStatusValue = "CONNECTED • syncing"
+                prefs.edit().putString("drive_backup_status", backupStatusValue).apply()
+                syncDriveBackupBlocking()
+                "Google Drive connected. Your memories will back up automatically."
+            }
+            callback(result)
+        }
+    }
+
+    fun disconnectDriveBackup() {
+        prefs.edit().remove("drive_tree_uri").remove("drive_folder_uri").putString("drive_backup_status", "PHONE ONLY").apply()
+        backupStatusValue = "PHONE ONLY"
+    }
+
+    fun syncDriveBackup(callback: ((Result<String>) -> Unit)? = null) {
+        backupExecutor.execute {
+            val result = runCatching { syncDriveBackupBlocking(); "Memory backup synchronised." }
+            callback?.invoke(result)
+        }
+    }
+
+    private fun contextResolver() = appContext.contentResolver
+    private val appContext get() = context.applicationContext
 
     fun save(category: String, title: String, content: String): BobbyMemory {
         require(title.isNotBlank() && content.isNotBlank()) { "Title and content are required." }
@@ -76,7 +133,34 @@ class BobbyMemoryStore(context: Context) {
     fun clear() = synchronized(lock) { prefs.edit().remove(KEY).apply() }
     fun exportJson(): String = synchronized(lock) { JSONArray().also { a -> readAll().forEach { a.put(toJson(it)) } }.toString(2) }
 
-    private fun readAll(): List<BobbyMemory> = runCatching {
+
+    private fun syncDriveBackupBlocking() {
+        val folderText = prefs.getString("drive_folder_uri", null) ?: return
+        val folderUri = Uri.parse(folderText)
+        val resolver = contextResolver()
+        val folderId = DocumentsContract.getDocumentId(folderUri)
+        val children = DocumentsContract.buildChildDocumentsUriUsingTree(folderUri, folderId)
+        var backupUri: Uri? = null
+        resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)?.use { cursor ->
+            val idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+            val nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+            while (cursor.moveToNext()) {
+                if (nameCol >= 0 && cursor.getString(nameCol) == "bobby-memory-backup.json" && idCol >= 0) {
+                    backupUri = DocumentsContract.buildDocumentUriUsingTree(folderUri, cursor.getString(idCol))
+                    break
+                }
+            }
+        }
+        if (backupUri == null) {
+            backupUri = DocumentsContract.createDocument(resolver, folderUri, "application/json", "bobby-memory-backup.json")
+        }
+        val target = requireNotNull(backupUri) { "Drive provider could not create the memory backup file." }
+        resolver.openOutputStream(target, "wt")?.bufferedWriter(Charsets.UTF_8)?.use { it.write(exportJson()) }
+            ?: error("Could not write the memory backup to Drive.")
+        backupStatusValue = "CONNECTED • backed up"
+        prefs.edit().putString("drive_backup_status", backupStatusValue).apply()
+    }
+\n    private fun readAll(): List<BobbyMemory> = runCatching {
         val a = JSONArray(prefs.getString(KEY, "[]"))
         (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let {
             BobbyMemory(it.optString("id"), it.optString("category"), it.optString("title"),
@@ -88,6 +172,9 @@ class BobbyMemoryStore(context: Context) {
         val a = JSONArray()
         items.forEach { a.put(toJson(it)) }
         prefs.edit().putString(KEY, a.toString()).apply()
+        if (!prefs.getString("drive_folder_uri", null).isNullOrBlank()) {
+            backupExecutor.execute { runCatching { syncDriveBackupBlocking() } }
+        }
     }
     private fun toJson(m: BobbyMemory) = JSONObject().put("id", m.id).put("category", m.category)
         .put("title", m.title).put("content", m.content).put("updatedAt", m.updatedAt)
