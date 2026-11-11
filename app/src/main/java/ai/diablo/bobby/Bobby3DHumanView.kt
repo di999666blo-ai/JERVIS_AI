@@ -35,6 +35,7 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
     private var positionHandle = 0
     private var colorHandle = 0
     private var mvpHandle = 0
+    private var modelHandle = 0
     private lateinit var vertices: FloatBuffer
     private lateinit var indices: ShortBuffer
     private var indexCount = 0
@@ -52,22 +53,45 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         val vertexShader = compile(GLES20.GL_VERTEX_SHADER, """
             uniform mat4 uMvp;
+            uniform mat4 uModel;
             attribute vec3 aPosition;
-            void main(){ gl_Position = uMvp * vec4(aPosition,1.0); }
+            attribute vec3 aNormal;
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            void main(){
+                vec4 worldPosition = uModel * vec4(aPosition,1.0);
+                vPosition = worldPosition.xyz;
+                vNormal = mat3(uModel) * aNormal;
+                gl_Position = uMvp * vec4(aPosition,1.0);
+            }
         """.trimIndent())
         val fragmentShader = compile(GLES20.GL_FRAGMENT_SHADER, """
             precision mediump float;
             uniform vec4 uColor;
-            void main(){ gl_FragColor = uColor; }
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            void main(){
+                vec3 n = normalize(vNormal);
+                vec3 lightDirection = normalize(vec3(-0.45,0.78,0.62));
+                float diffuse = max(dot(n,lightDirection),0.0);
+                vec3 viewDirection = normalize(vec3(0.0,1.35,7.2)-vPosition);
+                vec3 halfDirection = normalize(lightDirection+viewDirection);
+                float specular = pow(max(dot(n,halfDirection),0.0),24.0)*0.22;
+                float lighting = 0.30 + diffuse*0.70;
+                vec3 shaded = uColor.rgb*lighting + vec3(specular);
+                gl_FragColor = vec4(shaded,uColor.a);
+            }
         """.trimIndent())
         program = GLES20.glCreateProgram()
         GLES20.glAttachShader(program, vertexShader)
         GLES20.glAttachShader(program, fragmentShader)
         GLES20.glBindAttribLocation(program, 0, "aPosition")
+        GLES20.glBindAttribLocation(program, 1, "aNormal")
         GLES20.glLinkProgram(program)
         positionHandle = 0
         colorHandle = GLES20.glGetUniformLocation(program, "uColor")
         mvpHandle = GLES20.glGetUniformLocation(program, "uMvp")
+        modelHandle = GLES20.glGetUniformLocation(program, "uModel")
         buildSphere()
     }
 
@@ -84,6 +108,8 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         vertices.position(0)
         GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 12, vertices)
         GLES20.glEnableVertexAttribArray(positionHandle)
+        GLES20.glVertexAttribPointer(1, 3, GLES20.GL_FLOAT, false, 12, vertices)
+        GLES20.glEnableVertexAttribArray(1)
         Matrix.multiplyMM(vp, 0, projection, 0, view, 0)
         val t = (System.nanoTime() - startTime) / 1_000_000_000f
         val bob = if (active) sin(t * 3.2f) * 0.035f else sin(t * 1.7f) * 0.018f
@@ -216,6 +242,7 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         Matrix.scaleM(model,0,sx,sy,sz)
         Matrix.multiplyMM(mvp,0,vp,0,model,0)
         GLES20.glUniformMatrix4fv(mvpHandle,1,false,mvp,0)
+        GLES20.glUniformMatrix4fv(modelHandle,1,false,model,0)
         GLES20.glUniform4f(colorHandle,((color shr 16) and 255)/255f,((color shr 8) and 255)/255f,(color and 255)/255f,1f)
         indices.position(0)
         GLES20.glDrawElements(GLES20.GL_TRIANGLES,indexCount,GLES20.GL_UNSIGNED_SHORT,indices)
