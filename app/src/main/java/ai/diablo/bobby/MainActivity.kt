@@ -131,7 +131,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         }
                         }
                     }
-                    if (needsLiveResearch && webConnector.hasKey()) {
+                    if (needsLiveResearch && !BobbyAiClient.usesGemini(aiSettings) && webConnector.hasKey()) {
                         webConnector.search(userQuestion) { searchResult ->
                             val context = searchResult.getOrElse { emptyList() }.take(6).mapIndexed { index, item ->
                                 "[${index+1}] ${item.title}\n${item.description}\nSource: ${item.url}"
@@ -142,7 +142,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                             }
                         }
                     } else {
-                        askWithContext(if (needsLiveResearch) "No Brave Search key is configured. Do not claim to have browsed; tell the user to connect Web Research for live results." else "")
+                        askWithContext(if (needsLiveResearch && !BobbyAiClient.usesGemini(aiSettings))
+                            "No external search provider is configured. Do not claim to have browsed; explain that live sources could not be verified."
+                            else "")
                     }
                 }
             )
