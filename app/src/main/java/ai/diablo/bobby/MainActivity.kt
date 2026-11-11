@@ -18,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -34,6 +35,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.IntOffset
@@ -238,13 +242,20 @@ private fun BobbyHome(
     val hostActivity = appContext as? ComponentActivity
     val modeStore = remember { BobbyModeStore(appContext) }
     var activeMode by remember { mutableStateOf(modeStore.mode()) }
-    val chat = remember(activeMode) {
+    val conversationStore = remember { BobbyConversationStore(appContext) }
+    var sessions by remember(activeMode) { mutableStateOf(conversationStore.list(activeMode)) }
+    var activeSessionId by remember(activeMode) { mutableStateOf(conversationStore.ensureActive(activeMode, modeStore.loadHistory(activeMode))) }
+    val chat = remember(activeMode, activeSessionId) {
         mutableStateListOf<ChatLine>().apply {
-            addAll(modeStore.loadHistory(activeMode))
+            addAll(conversationStore.load(activeMode, activeSessionId) ?: modeStore.loadHistory(activeMode))
             if (isEmpty()) add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. Friendly Mode is ready. 😊"; BobbyMode.WORKING -> "BOBBY WORK MODE READY • Let’s organise tasks, projects, documents and focused work."; BobbyMode.DARK -> "DARK MODE ACTIVE • Privacy-focused research workspace. Tor Browser does not route BOBBY traffic." }))
         }
     }
-    LaunchedEffect(activeMode, chat.size) { modeStore.saveHistory(activeMode, chat.toList()) }
+    LaunchedEffect(activeMode, activeSessionId, chat.size) {
+        modeStore.saveHistory(activeMode, chat.toList())
+        conversationStore.save(activeMode, activeSessionId, chat.toList())
+        sessions = conversationStore.list(activeMode)
+    }
     val memoryStore = remember { BobbyMemoryStore(appContext) }
     val socialCompanion = remember { BobbySocialCompanion(appContext) }
     val profileStore = remember { BobbyProfileStore(appContext) }
@@ -314,6 +325,10 @@ private fun BobbyHome(
     val uiPrefs = remember { appContext.getSharedPreferences("bobby_ui_preferences", android.content.Context.MODE_PRIVATE) }
     var lightTheme by remember { mutableStateOf(uiPrefs.getBoolean("light_theme", false)) }
     var chatSearch by remember { mutableStateOf("") }
+    var modelMenuOpen by remember { mutableStateOf(false) }
+    var conversationToRename by remember { mutableStateOf<BobbyConversation?>(null) }
+    var conversationToDelete by remember { mutableStateOf<BobbyConversation?>(null) }
+    var renameDraft by remember { mutableStateOf("") }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2300); showStartup = false }
     var webQuery by remember { mutableStateOf("") }
     var webKeyDraft by remember { mutableStateOf("") }
@@ -714,6 +729,24 @@ private fun BobbyHome(
                                 Text(when (activeMode) { BobbyMode.FRIENDLY -> "Friendly mode"; BobbyMode.WORKING -> "Work mode"; BobbyMode.DARK -> "Dark mode" }, color = mutedText, style = MaterialTheme.typography.labelSmall)
                             }
                             TextButton(onClick = { lightTheme = !lightTheme; uiPrefs.edit().putBoolean("light_theme", lightTheme).apply() }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(if (lightTheme) "☀" else "☾", color = mainText, fontSize = 20.sp) }
+                            Box {
+                                TextButton(onClick = { modelMenuOpen = true }, contentPadding = PaddingValues(horizontal = 6.dp)) {
+                                    Text("MODEL ▾", color = mainText, style = MaterialTheme.typography.labelSmall)
+                                }
+                                DropdownMenu(expanded = modelMenuOpen, onDismissRequest = { modelMenuOpen = false }) {
+                                    listOf("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro").forEach { choice ->
+                                        DropdownMenuItem(
+                                            text = { Text(if (model == choice) "✓ $choice" else choice) },
+                                            onClick = {
+                                                model = choice
+                                                onSaveConfig(endpoint, choice, "")
+                                                modelMenuOpen = false
+                                            }
+                                        )
+                                    }
+                                    DropdownMenuItem(text = { Text("Custom model…") }, onClick = { modelMenuOpen = false; settingsOpen = true })
+                                }
+                            }
                             Surface(color = Color(0xFF12382F), shape = RoundedCornerShape(20.dp)) {
                                 Text(if (aiEnabled) "● AI READY" else if (offlineStore.status().installed) "● OFFLINE" else "● LOCAL", color = Color(0xFF62D6AE), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelSmall)
                             }
@@ -766,7 +799,7 @@ private fun BobbyHome(
                                         Spacer(Modifier.width(12.dp))
                                     }
                                     Surface(color = if (line.fromBobby) Color.Transparent else Color(0xFF303030), shape = RoundedCornerShape(18.dp), modifier = Modifier.widthIn(max = 310.dp)) {
-                                        Text(line.text, Modifier.padding(horizontal = 14.dp, vertical = 11.dp), color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                                        BobbyMessageContent(line.text, line.fromBobby, lightTheme)
                                     }
                                     if (!line.fromBobby) {
                                         Spacer(Modifier.width(12.dp))
@@ -804,18 +837,32 @@ private fun BobbyHome(
                                     TextButton(onClick = { sidebarOpen = false }) { Text("✕", color = Color.White) }
                                 }
                                 Button(onClick = {
-                                    modeStore.saveHistory(activeMode, chat.toList())
-                                    chat.clear()
-                                    chat.add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. What would you like to talk about?"; BobbyMode.WORKING -> "BOBBY WORK MODE READY. What are we working on?"; BobbyMode.DARK -> "DARK MODE ACTIVE. What would you like to research?" }))
+                                    val greeting = ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. What would you like to talk about?"; BobbyMode.WORKING -> "BOBBY WORK MODE READY. What are we working on?"; BobbyMode.DARK -> "DARK MODE ACTIVE. What would you like to research?" })
+                                    activeSessionId = conversationStore.create(activeMode, listOf(greeting))
+                                    sessions = conversationStore.list(activeMode)
+                                    chatSearch = ""
                                     sidebarOpen = false
                                 }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("+ New chat") }
-                                Text("SEARCH THIS CONVERSATION", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 10.dp))
-                                OutlinedTextField(value = chatSearch, onValueChange = { chatSearch = it.take(100) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Find words in this chat") })
-                                val matchingLines = chat.withIndex().filter { chatSearch.isNotBlank() && it.value.text.contains(chatSearch, ignoreCase = true) }
-                                if (chatSearch.isNotBlank()) {
-                                    Text(matchingLines.size.toString() + " matching messages", color = mutedText, style = MaterialTheme.typography.labelSmall)
-                                    matchingLines.take(8).forEach { match -> TextButton(onClick = { sidebarOpen = false }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(6.dp)) { Text((if (match.value.fromBobby) "BOBBY: " else "YOU: ") + match.value.text.take(90), color = mainText, style = MaterialTheme.typography.bodySmall) }
-                                } else Text("Your conversation is saved locally for this operating mode.", color = mutedText, modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.bodySmall)
+                                Text("SEARCH ALL CONVERSATIONS", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 10.dp))
+                                OutlinedTextField(value = chatSearch, onValueChange = { chatSearch = it.take(100) }, modifier = Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search saved chats and messages") })
+                                val visibleSessions = if (chatSearch.isBlank()) sessions else sessions.filter { session ->
+                                    session.title.contains(chatSearch, ignoreCase = true) || session.messages.any { it.text.contains(chatSearch, ignoreCase = true) }
+                                }
+                                Text("${visibleSessions.size} saved conversations", color = mutedText, style = MaterialTheme.typography.labelSmall)
+                                visibleSessions.take(20).forEach { session ->
+                                    Column(Modifier.fillMaxWidth().background(if (session.id == activeSessionId) chatBg else Color.Transparent, RoundedCornerShape(8.dp)).padding(horizontal = 4.dp, vertical = 2.dp)) {
+                                        TextButton(onClick = { activeSessionId = session.id; sidebarOpen = false }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)) {
+                                            Column(Modifier.fillMaxWidth()) {
+                                                Text(session.title, color = mainText, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                                                Text(session.messages.lastOrNull()?.text.orEmpty().take(72), color = mutedText, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                            }
+                                        }
+                                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                            TextButton(onClick = { renameDraft = session.title; conversationToRename = session }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) { Text("RENAME", color = Neon, style = MaterialTheme.typography.labelSmall) }
+                                            TextButton(onClick = { conversationToDelete = session }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) { Text("DELETE", color = Color(0xFFE57373), style = MaterialTheme.typography.labelSmall) }
+                                        }
+                                    }
+                                }
                                 HorizontalDivider(color = Color(0xFF333333))
                                 Text("BOBBY TOOLS", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
                                 @Composable fun drawerAction(label: String, action: () -> Unit) {
@@ -870,6 +917,43 @@ private fun BobbyHome(
                             Spacer(Modifier.weight(1f).fillMaxHeight().clickable { sidebarOpen = false })
                         }
                     }
+                }
+                if (conversationToRename != null) {
+                    AlertDialog(
+                        onDismissRequest = { conversationToRename = null },
+                        title = { Text("RENAME CONVERSATION") },
+                        text = { OutlinedTextField(value = renameDraft, onValueChange = { renameDraft = it.take(60) }, singleLine = true, label = { Text("Conversation title") }) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                conversationToRename?.let { conversationStore.rename(activeMode, it.id, renameDraft) }
+                                sessions = conversationStore.list(activeMode)
+                                conversationToRename = null
+                            }) { Text("SAVE", color = Neon) }
+                        },
+                        dismissButton = { TextButton(onClick = { conversationToRename = null }) { Text("CANCEL") } }
+                    )
+                }
+                if (conversationToDelete != null) {
+                    AlertDialog(
+                        onDismissRequest = { conversationToDelete = null },
+                        title = { Text("DELETE CONVERSATION?") },
+                        text = { Text("This removes the selected conversation from this phone. It cannot be undone.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                val target = conversationToDelete
+                                if (target != null) {
+                                    conversationStore.delete(activeMode, target.id)
+                                    if (target.id == activeSessionId) {
+                                        val greeting = ChatLine(true, "This is a new BOBBY conversation. What would you like to do?")
+                                        activeSessionId = conversationStore.create(activeMode, listOf(greeting))
+                                    }
+                                    sessions = conversationStore.list(activeMode)
+                                }
+                                conversationToDelete = null
+                            }) { Text("DELETE", color = Color(0xFFE57373)) }
+                        },
+                        dismissButton = { TextButton(onClick = { conversationToDelete = null }) { Text("CANCEL") } }
+                    )
                 }
                 if (onboardingOpen) {
                     BobbyOnboarding(
@@ -1447,6 +1531,47 @@ private fun BobbyHome(
             }
             if (showStartup) BobbyStartupScreen()
             }
+        }
+    }
+}
+
+
+@Composable
+private fun BobbyMessageContent(text: String, fromBobby: Boolean, lightTheme: Boolean) {
+    val clipboard = LocalClipboardManager.current
+    val codePattern = Regex("```([^\\n`]*)\\n([\\s\\S]*?)```")
+    val matches = codePattern.findAll(text).toList()
+    if (matches.isEmpty()) {
+        Text(text, Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
+            color = if (fromBobby) (if (lightTheme) Color(0xFF171717) else Color.White) else Color.White,
+            style = MaterialTheme.typography.bodyLarge)
+        return
+    }
+    Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        var cursor = 0
+        matches.forEach { match ->
+            if (match.range.first > cursor) {
+                Text(text.substring(cursor, match.range.first),
+                    color = if (lightTheme && fromBobby) Color(0xFF171717) else Color.White,
+                    style = MaterialTheme.typography.bodyLarge)
+            }
+            val language = match.groupValues[1].trim().ifBlank { "CODE" }
+            val code = match.groupValues[2].trimEnd()
+            Column(Modifier.fillMaxWidth().background(if (lightTheme) Color(0xFFF0F0F0) else Color(0xFF111111), RoundedCornerShape(8.dp)).padding(8.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(language.uppercase(), Modifier.weight(1f), color = if (lightTheme) Color(0xFF555555) else Color.LightGray, style = MaterialTheme.typography.labelSmall)
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(code)) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                        Text("COPY", color = Neon, style = MaterialTheme.typography.labelSmall)
+                    }
+                }
+                Text(code, Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    color = if (lightTheme) Color(0xFF202020) else Color(0xFFE8E8E8),
+                    fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 17.sp)
+            }
+            cursor = match.range.last + 1
+        }
+        if (cursor < text.length) {
+            Text(text.substring(cursor), color = if (lightTheme && fromBobby) Color(0xFF171717) else Color.White, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
