@@ -63,7 +63,7 @@ end immediately.
 ## No Liability
 
 
-***As far as the law allows, the model and its output come as is, without any warranty or condition, and the licensor will not be liable to you for any damages arising out of these terms or the use or nature of the model, under any kind of legal claim. If this provision is not enforceable in your jurisdiction, your licenses are void.***
+***As far as the law allows, the model and its output come as is, without any warranty or condition, and the licensor will not be liable to you for any damages arising out of these terms or the use or nature of the model or its output, under any kind of legal claim. If this provision is not enforceable in your jurisdiction, your licenses are void.***
 
 
 ## Definitions
