@@ -117,7 +117,15 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     val webConnector = BobbyWebResearchConnector(this)
                     val aiSettings = AiSettings(configStore.endpoint(), configStore.model(), configStore.apiKey())
                     val askWithContext: (String) -> Unit = { webContext ->
+                        val requestStartedAt = android.os.SystemClock.elapsedRealtime()
                         BobbyAiClient.reply(aiSettings, history, completeContext, BobbyModeStore(this).mode(), webContext) { result ->
+                        BobbyTraceStore(this).record(
+                            request = userQuestion,
+                            model = aiSettings.model,
+                            success = result.isSuccess,
+                            latencyMs = android.os.SystemClock.elapsedRealtime() - requestStartedAt,
+                            failureType = result.exceptionOrNull()?.javaClass?.simpleName.orEmpty()
+                        )
                         if (result.isFailure && offlineAi.isModelInstalled()) {
                             val offlinePrompt = history.takeLast(10).joinToString("\n") { line ->
                                 (if (line.fromBobby) "BOBBY: " else "USER: ") + line.text
@@ -895,6 +903,7 @@ private fun BobbyHome(
                                 drawerAction("AI settings") { settingsOpen = true }
                                 drawerAction("Add plugins") { pluginsOpen = true }
                                 drawerAction("ECC agent") { agentHistory = agentRuntime.recentTasks(); agentOpen = true }
+                                drawerAction("AI performance & learning") { appContext.startActivity(Intent(appContext, BobbyLearningActivity::class.java)) }
                                 drawerAction("APK updates") { updateOpen = true; updateStatus = "Ready to check GitHub releases."; pendingUpdate = null }
                                 drawerAction("Offline AI") { offlineStatus = offlineStore.status().note; offlineOpen = true }
                                 drawerAction("Web research") { webResearchOpen = true }
