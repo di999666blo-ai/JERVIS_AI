@@ -903,7 +903,7 @@ private fun BobbyHome(
                                 drawerAction("Add plugins") { pluginsOpen = true }
                                 drawerAction("ECC agent") { agentHistory = agentRuntime.recentTasks(); agentOpen = true }
                                 drawerAction("AI performance & learning") { appContext.startActivity(Intent(appContext, BobbyLearningActivity::class.java)) }
-                                drawerAction("APK updates") { updateOpen = true; updateStatus = "Ready to check GitHub releases."; pendingUpdate = null }
+                                drawerAction("APK updates") { updateOpen = true; updateStatus = "Ready to check GitHub releases." }
                                 drawerAction("Offline AI") { offlineStatus = offlineStore.status().note; offlineOpen = true }
                                 drawerAction("Web research") { webResearchOpen = true }
                                 drawerAction("Dexter financial research") { dexterOpen = true }
