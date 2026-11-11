@@ -136,17 +136,19 @@ class BobbyMemoryStore(context: Context) {\n    private val context = context.ap
 
     private fun syncDriveBackupBlocking() {
         val folderText = prefs.getString("drive_folder_uri", null) ?: return
+        val treeText = prefs.getString("drive_tree_uri", null) ?: return
         val folderUri = Uri.parse(folderText)
+        val treeUri = Uri.parse(treeText)
         val resolver = contextResolver()
         val folderId = DocumentsContract.getDocumentId(folderUri)
-        val children = DocumentsContract.buildChildDocumentsUriUsingTree(folderUri, folderId)
+        val children = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, folderId)
         var backupUri: Uri? = null
         resolver.query(children, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID, DocumentsContract.Document.COLUMN_DISPLAY_NAME), null, null, null)?.use { cursor ->
             val idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
             val nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
             while (cursor.moveToNext()) {
                 if (nameCol >= 0 && cursor.getString(nameCol) == "bobby-memory-backup.json" && idCol >= 0) {
-                    backupUri = DocumentsContract.buildDocumentUriUsingTree(folderUri, cursor.getString(idCol))
+                    backupUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, cursor.getString(idCol))
                     break
                 }
             }
