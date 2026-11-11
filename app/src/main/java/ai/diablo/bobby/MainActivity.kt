@@ -1381,11 +1381,11 @@ private fun BobbyHome(
                         title = { Text("Bobby AI connection") },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("OpenAI-compatible API. Your key is encrypted on this device.")
+                                Text("Google Gemini with built-in Google Search grounding. Your API key is encrypted on this device.")
                                 OutlinedTextField(value = endpoint, onValueChange = { endpoint = it }, label = { Text("HTTPS API base URL") }, singleLine = true)
                                 OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Model") }, singleLine = true)
                                 OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, label = { Text("API key (paste here)") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
-                                Text("Default: OpenAI API. Key is stored with Android Keystore encryption; it is never committed to GitHub.", style = MaterialTheme.typography.bodySmall)
+                                Text("Gemini defaults: https://generativelanguage.googleapis.com/v1beta • gemini-2.5-flash. Gemini can search the web when needed. Key is stored with Android Keystore encryption and is never committed to GitHub.", style = MaterialTheme.typography.bodySmall)\n                                OutlinedButton(onClick = { endpoint = "https://generativelanguage.googleapis.com/v1beta"; model = "gemini-2.5-flash" }) { Text("USE GOOGLE GEMINI") }
                             }
                         },
                         confirmButton = {
