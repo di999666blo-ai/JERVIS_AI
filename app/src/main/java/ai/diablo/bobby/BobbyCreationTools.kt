@@ -153,7 +153,7 @@ ${body}
 
     private fun writeDocx(file: File, body: String) {
         val paragraphs = body.lines().joinToString("") { line ->
-            "<w:p><w:r><w:t xml:space=\"preserve\">\${xmlEscape(line)}</w:t></w:r></w:p>"
+            "<w:p><w:r><w:t xml:space=\"preserve\">${xmlEscape(line)}</w:t></w:r></w:p>"
         }
         val document = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>$paragraphs<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>"""
@@ -175,9 +175,9 @@ ${body}
                     column = ('A'.code + rem).toChar() + column
                     n = (n - 1) / 26
                 }
-                "<c r=\"$column\${rowIndex + 1}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">\${xmlEscape(value)}</t></is></c>"
+                "<c r=\"$column${rowIndex + 1}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">${xmlEscape(value)}</t></is></c>"
             }.joinToString("")
-            "<row r=\"\${rowIndex + 1}\">$cellXml</row>"
+            "<row r=\"${rowIndex + 1}\">$cellXml</row>"
         }.joinToString("")
         val sheet = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>$sheetRows</sheetData></worksheet>"""
         writeZip(file, mapOf(
