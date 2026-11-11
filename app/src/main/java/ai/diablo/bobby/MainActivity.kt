@@ -64,6 +64,20 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Let BOBBY's voice activity wake the display without bypassing the device lock.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        }
+        // Start the visible, user-stoppable button listener when BOBBY is opened.
+        runCatching {
+            val wakeIntent = Intent(this, BobbyWakeService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) startForegroundService(wakeIntent)
+            else startService(wakeIntent)
+        }
         if (intent?.getBooleanExtra(FloatingRobotService.EXTRA_START_VOICE, false) == true) voiceLaunchToken++
         tts = TextToSpeech(this, this)
         neuralVoice = BobbyNeuralVoice(this)

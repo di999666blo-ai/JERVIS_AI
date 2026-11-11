@@ -20,6 +20,29 @@ class BobbyAccessibilityService : AccessibilityService() {
         BobbyAccessibilityController.lastPackage = event?.packageName?.toString()
     }
 
+    private var lastVolumeDownAt = 0L
+    private var volumeDownCount = 0
+
+    override fun onKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.keyCode != android.view.KeyEvent.KEYCODE_VOLUME_DOWN) return super.onKeyEvent(event)
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            val now = android.os.SystemClock.elapsedRealtime()
+            volumeDownCount = if (now - lastVolumeDownAt <= 1500L) volumeDownCount + 1 else 1
+            lastVolumeDownAt = now
+            if (volumeDownCount >= 3) {
+                volumeDownCount = 0
+                val launch = android.content.Intent(this, MainActivity::class.java).apply {
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    putExtra(FloatingRobotService.EXTRA_START_VOICE, true)
+                    putExtra(BobbyWakeService.EXTRA_WAKE_SOURCE, "volume")
+                }
+                runCatching { startActivity(launch) }
+                return true
+            }
+        }
+        return false
+    }
+
     override fun onInterrupt() = Unit
 
     override fun onServiceConnected() {
