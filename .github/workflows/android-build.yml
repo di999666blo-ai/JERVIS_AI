@@ -44,26 +44,31 @@ jobs:
         run: gradle --no-daemon assembleDebug
       - name: Prepare public APK
         run: cp app/build/outputs/apk/debug/app-debug.apk BOBBY.apk
+      - name: Generate APK SHA-256 checksum
+        run: sha256sum BOBBY.apk > BOBBY.apk.sha256
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: bobby-debug-apk
-          path: BOBBY.apk
+          path: |
+            BOBBY.apk
+            BOBBY.apk.sha256
           if-no-files-found: error
       - name: Publish public APK release
-        if: github.ref == 'refs/heads/bobby-development'
+        if: github.ref == 'refs/heads/bobby-development' && env.BOBBY_SIGNING_ENABLED == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: bobby-public
           target_commitish: bobby-development
           name: BOBBY Android APK
           body: |
-            Public Android APK build from bobby-development.
+            Stable signed Android APK build from bobby-development.
             Version code: ${{ github.run_number }}
+            Commit: ${{ github.sha }}
 
             Direct download: https://github.com/di999666blo-ai/JERVIS_AI/releases/latest/download/BOBBY.apk
-
-            IMPORTANT: This workflow currently uses the GitHub runner debug signing key. Android updates over an existing installation require a persistent signing key. Configure a stable Android signing keystore before distributing upgrades.
-          files: BOBBY.apk
+          files: |
+            BOBBY.apk
+            BOBBY.apk.sha256
           overwrite_files: true
           make_latest: true
