@@ -1226,68 +1226,21 @@ private fun BobbyHome(
                 }
                 if (webResearchOpen) {
                     AlertDialog(
-                        onDismissRequest = { if (!webBusy) webResearchOpen = false },
+                        onDismissRequest = { webResearchOpen = false },
                         title = { Text("BOBBY WEB RESEARCH") },
                         text = {
-                            Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Connect Brave Search once. BOBBY stores the API key encrypted on this phone and uses it only for web searches.")
-                                Text("PRIVATE BROWSING: Tor Browser is a separate app. BOBBY can launch it, but does not control its Tor circuits or make other apps use Tor.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
-                                OutlinedButton(onClick = {
-                                    val torLaunch = appContext.packageManager.getLaunchIntentForPackage("org.torproject.torbrowser")
-                                    if (torLaunch != null) {
-                                        torLaunch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        runCatching { appContext.startActivity(torLaunch) }
-                                            .onFailure { webStatus = "Could not open Tor Browser: " + (it.message ?: "unknown error") }
-                                    } else {
-                                        runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.torbrowser"))) }
-                                        webStatus = "Tor Browser is not installed. Opening its official installation page."
-                                    }
-                                }, modifier = Modifier.fillMaxWidth()) { Text("OPEN TOR BROWSER / INSTALL") }
-                                Text("Torch Browser is not the official Tor Browser and is not treated as a Tor/onion browser.", color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
-                                OutlinedTextField(value = webKeyDraft, onValueChange = { webKeyDraft = it }, label = { Text("Brave Search API key") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextButton(onClick = {
-                                        runCatching { webConnector.saveKey(webKeyDraft) }
-                                            .onSuccess { webKeyDraft = ""; webStatus = "API key saved securely. Search is ready." }
-                                            .onFailure { webStatus = it.message ?: "Could not save key." }
-                                    }) { Text("SAVE KEY", color = Neon) }
-                                    TextButton(onClick = {
-                                        runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://brave.com/search/api/"))) }
-                                    }) { Text("GET API KEY") }
-                                    TextButton(onClick = { webConnector.removeKey(); webStatus = "Disconnected. API key removed." }) { Text("DISCONNECT") }
-                                }
-                                Text(webStatus, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
-                                OutlinedTextField(value = webQuery, onValueChange = { webQuery = it.take(300) }, label = { Text("What should Bobby research?") }, modifier = Modifier.fillMaxWidth())
-                                Button(enabled = !webBusy && webConnector.hasKey() && webQuery.isNotBlank(), onClick = {
-                                    webBusy = true; webStatus = "Searching the web…"; webResults = emptyList()
-                                    webConnector.search(webQuery) { result ->
-                                        android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                            webBusy = false
-                                            result.onSuccess { rows -> webResults = rows; webStatus = "Found " + rows.size + " web results." }
-                                                .onFailure { webStatus = "Search failed: " + (it.message ?: "unknown error") }
-                                        }
-                                    }
-                                }) { Text(if (webBusy) "SEARCHING…" else "SEARCH WEB") }
-                                webResults.forEachIndexed { index, item ->
-                                    Column(Modifier.fillMaxWidth().background(Panel, RoundedCornerShape(10.dp)).padding(9.dp)) {
-                                        Text("${index + 1}. ${item.title}", color = Neon, style = MaterialTheme.typography.titleSmall)
-                                        Text(item.description, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
-                                        Text(item.url, color = Color.Cyan, style = MaterialTheme.typography.labelSmall)
-                                        TextButton(onClick = {
-                                            runCatching { appContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(item.url))) }
-                                        }) { Text("OPEN SOURCE") }
-                                    }
-                                }
-                                if (webResults.isNotEmpty()) {
-                                    Button(onClick = {
-                                        val brief = webResults.joinToString("\n\n") { it.title + "\n" + it.description + "\n" + it.url }
-                                        webResearchOpen = false
-                                        send("Research question: $webQuery\n\nAnalyse these search results, compare the sources, and summarise what is supported.\n$brief")
-                                    }) { Text("ASK BOBBY TO ANALYSE RESULTS") }
-                                }
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Gemini uses Google's built-in Search grounding when the configured Gemini model supports it. No Brave Search API key is required.")
+                                Text("For other AI providers, BOBBY will not pretend to have searched live sources. Use Dark Mode's separate Tor-verified private research workspace for Tor-routed page retrieval.")
+                                OutlinedTextField(value = webQuery, onValueChange = { webQuery = it.take(300) }, label = { Text("What should BOBBY research?") }, modifier = Modifier.fillMaxWidth())
+                                Button(enabled = webQuery.isNotBlank(), onClick = {
+                                    val query = webQuery.trim()
+                                    webResearchOpen = false
+                                    send("Research this topic using live Google Search grounding where available: " + query)
+                                }, modifier = Modifier.fillMaxWidth()) { Text("ASK BOBBY TO RESEARCH") }
                             }
                         },
-                        confirmButton = { TextButton(onClick = { webResearchOpen = false }) { Text("DONE", color = Neon) } }
+                        confirmButton = { TextButton(onClick = { webResearchOpen = false }) { Text("CLOSE", color = Neon) } }
                     )
                 }
                 if (offlineOpen) {
