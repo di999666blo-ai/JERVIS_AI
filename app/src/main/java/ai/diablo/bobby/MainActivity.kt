@@ -16,6 +16,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
@@ -274,7 +275,7 @@ private fun BobbyHome(
             if (isEmpty()) add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. Friendly Mode is ready. 😊"; BobbyMode.WORKING -> "BOBBY WORK MODE READY • Let’s organise tasks, projects, documents and focused work."; BobbyMode.DARK -> "DARK MODE ACTIVE • Privacy-focused research workspace. Tor Browser does not route BOBBY traffic." }))
         }
     }
-    LaunchedEffect(activeMode, activeSessionId, chat.size) {
+    LaunchedEffect(activeMode, activeSessionId, chat.size, chat.lastOrNull()?.text) {
         if (chat.isNotEmpty()) chatListState.animateScrollToItem(chat.size - 1)
         modeStore.saveHistory(activeMode, chat.toList())
         conversationStore.save(activeMode, activeSessionId, chat.toList())
@@ -379,6 +380,7 @@ private fun BobbyHome(
     var publicApiStatus by remember { mutableStateOf(if (publicApiEntries.isEmpty()) "Catalogue not downloaded yet." else "Cached catalogue ready • " + publicApiEntries.size + " entries") }
     val pluginStore = remember { BobbyPluginStore(appContext) }
     var derivAppId by remember { mutableStateOf("") }
+    var derivLoginId by remember { mutableStateOf("") }
     var derivToken by remember { mutableStateOf("") }
     var derivStatus by remember { mutableStateOf("Not connected") }
     var derivBusy by remember { mutableStateOf(false) }
@@ -794,7 +796,7 @@ private fun BobbyHome(
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     Column(Modifier.fillMaxSize()) {
                         Row(Modifier.fillMaxWidth().background(if (lightTheme) Color.White else Color(0xFF171717)).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = { sidebarOpen = true }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("☰", color = Color.White, fontSize = 23.sp) }
+                            TextButton(onClick = { sidebarOpen = true }, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("☰", color = mainText, fontSize = 23.sp) }
                             Column(Modifier.weight(1f)) {
                                 Text("BOBBY", color = mainText, style = MaterialTheme.typography.titleLarge)
                                 Text(when (activeMode) { BobbyMode.FRIENDLY -> "Friendly mode"; BobbyMode.WORKING -> "Work mode"; BobbyMode.DARK -> "Dark mode" }, color = mutedText, style = MaterialTheme.typography.labelSmall)
@@ -870,30 +872,30 @@ private fun BobbyHome(
                                         Spacer(Modifier.width(12.dp))
                                     }
                                     Column(horizontalAlignment = if (line.fromBobby) Alignment.Start else Alignment.End) {
-                                        Surface(color = if (line.fromBobby) Color.Transparent else Color(0xFF303030), shape = RoundedCornerShape(18.dp), modifier = Modifier.widthIn(max = 310.dp)) {
+                                        Surface(color = if (line.fromBobby) Color.Transparent else if (lightTheme) Color(0xFFE8E8E8) else Color(0xFF303030), shape = RoundedCornerShape(18.dp), modifier = Modifier.widthIn(max = 310.dp).combinedClickable(onClick = {}, onLongClick = { clipboardManager.setText(AnnotatedString(line.text)) })) {
                                             BobbyMessageContent(line.text, line.fromBobby, lightTheme)
                                         }
-                                        if (line.fromBobby) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                TextButton(
-                                                    onClick = { clipboardManager.setText(AnnotatedString(line.text)) },
-                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                                                ) { Text("COPY", color = mutedText, style = MaterialTheme.typography.labelSmall) }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            TextButton(
+                                                onClick = { clipboardManager.setText(AnnotatedString(line.text)) },
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                            ) { Text("COPY", color = mutedText, style = MaterialTheme.typography.labelSmall) }
+                                            if (line.fromBobby) {
                                                 TextButton(
                                                     onClick = { regenerateReply(messageIndex) },
                                                     enabled = state != "THINKING" && state != "READING FILE",
                                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                                                 ) { Text("REGENERATE", color = Neon, style = MaterialTheme.typography.labelSmall) }
+                                            } else {
+                                                TextButton(
+                                                    onClick = {
+                                                        draft = line.text
+                                                        while (chat.size > messageIndex) chat.removeAt(chat.lastIndex)
+                                                    },
+                                                    enabled = state != "THINKING" && state != "READING FILE",
+                                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                                ) { Text("EDIT", color = mutedText, style = MaterialTheme.typography.labelSmall) }
                                             }
-                                        } else {
-                                            TextButton(
-                                                onClick = {
-                                                    draft = line.text
-                                                    while (chat.size > messageIndex) chat.removeAt(chat.lastIndex)
-                                                },
-                                                enabled = state != "THINKING" && state != "READING FILE",
-                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                                            ) { Text("EDIT", color = mutedText, style = MaterialTheme.typography.labelSmall) }
                                         }
                                     }
                                     if (!line.fromBobby) {
@@ -932,7 +934,7 @@ private fun BobbyHome(
                             Column(Modifier.width(286.dp).fillMaxHeight().background(panelBg).padding(12.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Text("BOBBY", color = mainText, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                                    TextButton(onClick = { sidebarOpen = false }) { Text("✕", color = Color.White) }
+                                    TextButton(onClick = { sidebarOpen = false }) { Text("✕", color = mainText) }
                                 }
                                 Button(onClick = {
                                     val greeting = ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. What would you like to talk about?"; BobbyMode.WORKING -> "BOBBY WORK MODE READY. What are we working on?"; BobbyMode.DARK -> "DARK MODE ACTIVE. What would you like to research?" })
@@ -965,7 +967,7 @@ private fun BobbyHome(
                                 Text("BOBBY TOOLS", color = Neon, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(top = 8.dp))
                                 @Composable fun drawerAction(label: String, action: () -> Unit) {
                                     TextButton(onClick = { sidebarOpen = false; action() }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)) {
-                                        Text(label, color = Color.White, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium)
+                                        Text(label, color = mainText, modifier = Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium)
                                     }
                                 }
                                 drawerAction("All 11 capabilities") { appContext.startActivity(Intent(appContext, BobbyCapabilityHubActivity::class.java)) }
@@ -1399,14 +1401,15 @@ private fun BobbyHome(
                         text = {
                             Column {
                                 Text("Enter your numeric Deriv App ID and a Read-only API token. Never paste your password.")
-                                OutlinedTextField(value = derivAppId, onValueChange = { derivAppId = it.filter { ch -> ch.isDigit() }.take(12) }, label = { Text("App ID") })
+                                OutlinedTextField(value = derivAppId, onValueChange = { derivAppId = it.filter { ch -> ch.isDigit() }.take(12) }, label = { Text("App ID") }, singleLine = true)
+                                OutlinedTextField(value = derivLoginId, onValueChange = { derivLoginId = it.filter { ch -> ch.isLetterOrDigit() || ch == '-' || ch == '_' }.take(32) }, label = { Text("Deriv Account ID / Login ID (optional verification)") }, singleLine = true)
                                 OutlinedTextField(value = derivToken, onValueChange = { derivToken = it }, label = { Text("API token") }, visualTransformation = PasswordVisualTransformation())
                                 Text(derivStatus)
                             }
                         },
                         confirmButton = {
                             TextButton(onClick = {
-                                runCatching { derivConnector.saveCredentials(derivAppId, derivToken) }
+                                runCatching { derivConnector.saveCredentials(derivAppId, derivToken, derivLoginId) }
                                     .onSuccess {
                                         derivToken = ""
                                         derivBusy = true
