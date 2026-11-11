@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.PDPage
 import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
@@ -51,6 +52,7 @@ private class BobbyCreationEngine(private val context: Context) {
         val file = File(dir, "bobby_" + name + "_" + stamp + "." + ext)
         when (ext) {
             "pdf" -> {
+                PDFBoxResourceLoader.init(context)
                 PDDocument().use { document ->
                     val lines = mutableListOf<String>()
                     body.lines().forEach { paragraph ->
