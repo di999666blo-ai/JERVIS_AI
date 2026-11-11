@@ -1490,6 +1490,16 @@ private fun BobbyHome(
                 if (robot3dOpen) {
                     BobbyRobot3DDialog(onDismiss = { robot3dOpen = false })
                 }
+                if (avatarStudioOpen) {
+                    BobbyAvatarCustomizer(
+                        initial = avatarLook,
+                        onSave = { updatedLook ->
+                            avatarLook = updatedLook
+                            avatarStore.save(updatedLook)
+                        },
+                        onClose = { avatarStudioOpen = false }
+                    )
+                }
                 if (dexterOpen) {
                     BobbyDexterResearchDialog(
                         onDismiss = { dexterOpen = false },
