@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -243,6 +244,8 @@ private fun BobbyHome(
     onAskAiWithImage: (List<ChatLine>, String, (Result<String>) -> Unit) -> Unit
 ) {
     val appContext = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val chatListState = rememberLazyListState()
     val hostActivity = appContext as? ComponentActivity
     val modeStore = remember { BobbyModeStore(appContext) }
     var activeMode by remember { mutableStateOf(modeStore.mode()) }
@@ -256,6 +259,7 @@ private fun BobbyHome(
         }
     }
     LaunchedEffect(activeMode, activeSessionId, chat.size) {
+        if (chat.isNotEmpty()) chatListState.animateScrollToItem(chat.size - 1)
         modeStore.saveHistory(activeMode, chat.toList())
         conversationStore.save(activeMode, activeSessionId, chat.toList())
         sessions = conversationStore.list(activeMode)
@@ -790,7 +794,7 @@ private fun BobbyHome(
                         if (activeMode == BobbyMode.DARK) {
                             Text("Tor Browser protects browsing inside Tor Browser only. BOBBY's AI/API traffic is not routed through Tor.", color = Color(0xFFFFB74D), style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth().background(Color(0xFF2A2117)).padding(10.dp))
                         }
-                        LazyColumn(Modifier.weight(1f).fillMaxWidth().background(chatBg), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+                        LazyColumn(state = chatListState, modifier = Modifier.weight(1f).fillMaxWidth().background(chatBg), verticalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
                             if (chat.size <= 1) {
                                 item {
                                     Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -821,8 +825,16 @@ private fun BobbyHome(
                                         Surface(color = Neon, shape = CircleShape, modifier = Modifier.size(30.dp)) { Box(contentAlignment = Alignment.Center) { Text("B", color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) } }
                                         Spacer(Modifier.width(12.dp))
                                     }
-                                    Surface(color = if (line.fromBobby) Color.Transparent else Color(0xFF303030), shape = RoundedCornerShape(18.dp), modifier = Modifier.widthIn(max = 310.dp)) {
-                                        BobbyMessageContent(line.text, line.fromBobby, lightTheme)
+                                    Column(horizontalAlignment = if (line.fromBobby) Alignment.Start else Alignment.End) {
+                                        Surface(color = if (line.fromBobby) Color.Transparent else Color(0xFF303030), shape = RoundedCornerShape(18.dp), modifier = Modifier.widthIn(max = 310.dp)) {
+                                            BobbyMessageContent(line.text, line.fromBobby, lightTheme)
+                                        }
+                                        if (line.fromBobby) {
+                                            TextButton(
+                                                onClick = { clipboardManager.setText(AnnotatedString(line.text)) },
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                            ) { Text("COPY", color = mutedText, style = MaterialTheme.typography.labelSmall) }
+                                        }
                                     }
                                     if (!line.fromBobby) {
                                         Spacer(Modifier.width(12.dp))
