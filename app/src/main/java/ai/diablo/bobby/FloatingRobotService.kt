@@ -46,9 +46,7 @@ class FloatingRobotService : Service() {
         // Render BOBBY's actual current avatar settings in the floating companion.
         val savedLook = BobbyAvatarStore(this).load()
         val avatar = Bobby3DHumanView(this, savedLook, false).apply {
-            setEGLConfigChooser(8, 8, 8, 8, 16, 0)
             setZOrderOnTop(false)
-            setBackgroundColor(Color.TRANSPARENT)
             contentDescription = "BOBBY full-body companion. Tap to open voice assistant; drag to move."
         }
         val avatarParams = FrameLayout.LayoutParams(
