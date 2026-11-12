@@ -159,8 +159,13 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         val lower = palette[(bottomStyle + topStyle * 3) % 10]
         val shoes = palette[(shoeStyle + bottomStyle * 2) % 10]
         val trim = palette[(topStyle + bottomStyle + shoeStyle + 5) % 10]
-        val hair = hairPalette[current.hair.coerceIn(0,9)]
-        val skin = 0xFFE9B99E.toInt()
+        val hair = hairPalette[current.hairColor.coerceIn(0,9)]
+        val skinPalette = intArrayOf(0xFFFFE0C2.toInt(),0xFFF2C49F.toInt(),0xFFE5AD83.toInt(),0xFFD5966B.toInt(),0xFFC27D54.toInt(),0xFF9B5B3D.toInt(),0xFF7A452F.toInt(),0xFF633824.toInt(),0xFF4B2B20.toInt(),0xFF382017.toInt())
+        val skin = skinPalette[current.skinTone.coerceIn(0,9)]
+        val shoePalette = intArrayOf(0xFF171717.toInt(),0xFFB51E35.toInt(),0xFFFFD700.toInt(),0xFFFFFFFF.toInt(),0xFF8E44AD.toInt(),0xFF2878B5.toInt(),0xFF168A72.toInt(),0xFFB87333.toInt(),0xFFB9BEC7.toInt(),0xFF5B3528.toInt())
+        val shoeTint = shoePalette[current.shoeColor.coerceIn(0,9)]
+        val jewelryPalette = intArrayOf(0xFFFFD700.toInt(),0xFFC0C0C0.toInt(),0xFFB87333.toInt(),0xFFFF4D8D.toInt(),0xFF40C8E8.toInt(),0xFFFFFFFF.toInt())
+        val necklace = jewelryPalette[current.necklaceColor.coerceIn(0,5)]
         val bustScale = 0.78f + current.bustSize.coerceIn(1,10) * 0.075f
         // Procedural idle/walk-in-place leg articulation (low-cost ES 2.0).
         val legSwing = if (active) sin(t * 3.2f) * 10f else sin(t * 1.1f) * 1.8f
@@ -181,8 +186,8 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         // Ten shoe silhouettes: flat, trainers, heels, ankle boots and tall boots.
         val shoeH = if (shoeStyle == 2 || shoeStyle == 5 || shoeStyle == 8) 0.17f else 0.12f
         val shoeL = if (shoeStyle == 1 || shoeStyle == 4 || shoeStyle == 7) 0.40f else 0.34f
-        part(-0.27f,shoeH,0.12f,0.22f,shoeH,shoeL,shoes,bob)
-        part(0.27f,shoeH,0.12f,0.22f,shoeH,shoeL,shoes,bob)
+        part(-0.27f,shoeH,0.12f,0.22f,shoeH,shoeL,shoeTint,bob)
+        part(0.27f,shoeH,0.12f,0.22f,shoeH,shoeL,shoeTint,bob)
         if (shoeStyle in 2..5 || shoeStyle == 8) {
             part(-0.27f,0.25f,0.29f,0.055f,0.18f,0.06f,trim,bob)
             part(0.27f,0.25f,0.29f,0.055f,0.18f,0.06f,trim,bob)
@@ -221,6 +226,18 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
             part(0.31f,1.04f + bob,0.12f,0.075f,0.22f,0.055f,lower,0f,clothFlutter)
         }
         part(0f,2.13f + bob,0f,0.13f,0.18f,0.13f,skin)
+        // Necklace presets: none, fine chain, pendant, choker, layered and statement.
+        if (current.necklaceStyle > 0) {
+            val chainY = if (current.necklaceStyle == 3) 2.19f else 2.13f
+            part(-0.09f,chainY+bob,0.14f,0.018f,0.09f,0.018f,necklace,0f,-22f)
+            part(0.09f,chainY+bob,0.14f,0.018f,0.09f,0.018f,necklace,0f,22f)
+            part(0f,(chainY-0.075f)+bob,0.15f,0.025f,0.035f,0.025f,necklace)
+            if (current.necklaceStyle >= 2) part(0f,2.015f+bob,0.16f,0.035f,0.055f,0.025f,necklace)
+            if (current.necklaceStyle >= 4) {
+                part(-0.13f,2.16f+bob,0.14f,0.016f,0.10f,0.016f,necklace,0f,-30f)
+                part(0.13f,2.16f+bob,0.14f,0.016f,0.10f,0.016f,necklace,0f,30f)
+            }
+        }
         // Head, ears and hair cap
         part(0f,2.52f + bob,0f,0.36f,0.43f,0.31f,skin,0f,sway)
         part(-0.355f,2.49f + bob,0f,0.075f,0.12f,0.075f,skin)
@@ -240,7 +257,7 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         val eyeOpen = (0.72f + ((expression * 7 % 29) / 100f)).coerceIn(0.72f, 1f)
         val eyeHeight = 0.038f * blink * eyeOpen
         val eyeWhite = 0xFFFFF5EC.toInt()
-        val iris = intArrayOf(0xFF397C78.toInt(),0xFF5B4636.toInt(),0xFF405D91.toInt(),0xFF292929.toInt())[current.hair % 4]
+        val iris = intArrayOf(0xFF397C78.toInt(),0xFF5B4636.toInt(),0xFF405D91.toInt(),0xFF292929.toInt(),0xFF6A8E3A.toInt(),0xFF7952A0.toInt())[current.eyeColor.coerceIn(0,5)]
         part(-0.135f,2.555f + bob,0.294f,0.078f,eyeHeight,0.022f,eyeWhite)
         part(0.135f,2.555f + bob,0.294f,0.078f,eyeHeight,0.022f,eyeWhite)
         part(-0.135f,2.555f + bob,0.316f,0.027f,0.031f*blink,0.012f,iris)
@@ -256,7 +273,8 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         val mouthY = 2.355f + bob + ((expression % 11) - 5) * 0.0035f
         val mouthWidth = 0.042f + ((expression * 13 % 10) * 0.005f)
         val mouthHeight = if (expression % 7 == 0) 0.032f else 0.009f + ((expression % 4) * 0.003f)
-        val lipColor = if (expression % 3 == 1) 0xFFB94E65.toInt() else 0xFF914653.toInt()
+        val lipPalette = intArrayOf(0xFFB94E65.toInt(),0xFF914653.toInt(),0xFFD65B76.toInt(),0xFF8A263D.toInt(),0xFFE58C91.toInt(),0xFFB56C55.toInt())
+        val lipColor = lipPalette[current.makeup.coerceIn(0,5)]
         part(0f,mouthY,0.309f,mouthWidth,mouthHeight,0.018f,lipColor)
         // Outfit finishing: collar, buttons, wrist cuffs and shoe heels.
         part(0f,1.91f + bob,0.19f,0.19f,0.045f,0.035f,lower)
