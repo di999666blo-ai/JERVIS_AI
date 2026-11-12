@@ -339,6 +339,8 @@ private fun BobbyHome(
     var webResearchOpen by remember { mutableStateOf(false) }
     var darkResearchOpen by remember { mutableStateOf(false) }
     var creativeStudioOpen by remember { mutableStateOf(false) }
+    var videoStudioOpen by remember { mutableStateOf(false) }
+    var autoPostOpen by remember { mutableStateOf(false) }
     var image3dStudioOpen by remember { mutableStateOf(false) }
     var robot3dOpen by remember { mutableStateOf(false) }
     val avatarStore = remember { BobbyAvatarStore(appContext) }
@@ -1068,6 +1070,8 @@ private fun BobbyHome(
                                 drawerAction("◷  History") { chatSearch = ""; sessions = conversationStore.list(activeMode); historyOpen = true }
                                 drawerAction("▣  My Files") { filePicker.launch(arrayOf("*/*")) }
                                 drawerAction("✧  Creative Studio") { creativeStudioOpen = true }
+                                drawerAction("▣  Video Studio") { videoStudioOpen = true }
+                                drawerAction("↗  Auto Post / Social") { autoPostOpen = true }
                                 drawerAction("◇  Plugins") { pluginsOpen = true }
                                 drawerAction("⚙  Settings") { settingsOpen = true }
                                 Spacer(Modifier.weight(1f))
@@ -1708,6 +1712,17 @@ private fun BobbyHome(
                         },
                         dismissButton = { TextButton(onClick = { updateOpen = false }) { Text("CLOSE") } }
                     )
+                }
+                if (videoStudioOpen) {
+                    BobbyVideoStudioDialog(onDismiss = { videoStudioOpen = false }, onGenerate = { prompt, done ->
+                        val cfg = BobbyConfigStore(appContext)
+                        BobbyAiClient.reply(AiSettings(cfg.endpoint(), cfg.model(), cfg.apiKey()),
+                            listOf(ChatLine(false, prompt)),
+                            "You are BOBBY VIDEO STUDIO, a careful video producer. Return a usable production package with timed scenes, concise narration and platform-ready copy. Do not claim a video file was rendered.") { done(it) }
+                    })
+                }
+                if (autoPostOpen) {
+                    BobbyAutoPostDialog(onDismiss = { autoPostOpen = false })
                 }
                 if (creativeStudioOpen) {
                     BobbyCreationToolsDialog(onDismiss = { creativeStudioOpen = false }, onOpenImage3d = { creativeStudioOpen = false; image3dStudioOpen = true })
