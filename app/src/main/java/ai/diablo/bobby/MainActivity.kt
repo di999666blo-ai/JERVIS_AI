@@ -1791,12 +1791,20 @@ private fun BobbyHome(
                         title = { Text("Bobby AI connection") },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Google Gemini with built-in Google Search grounding. Your API key is encrypted on this device.")
+                                Text("Choose a supported provider or enter a custom HTTPS endpoint. Each provider requires its own API key and model ID. Keys are encrypted on this device.")
                                 OutlinedTextField(value = endpoint, onValueChange = { endpoint = it }, label = { Text("HTTPS API base URL") }, singleLine = true)
                                 OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Model") }, singleLine = true)
                                 OutlinedTextField(value = apiKey, onValueChange = { apiKey = it }, label = { Text("API key (paste here)") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
-                                Text("Gemini defaults: https://generativelanguage.googleapis.com/v1beta • gemini-2.5-flash. Gemini can search the web when needed. Key is stored with Android Keystore encryption and is never committed to GitHub.", style = MaterialTheme.typography.bodySmall)
-                                OutlinedButton(onClick = { endpoint = "https://generativelanguage.googleapis.com/v1beta"; model = "gemini-2.5-flash" }) { Text("USE GOOGLE GEMINI") }
+                                Text("Supported now: Google Gemini (native), Anthropic Claude (native), OpenAI Responses, and OpenAI-compatible chat APIs such as OpenRouter, Groq, DeepSeek, Mistral and compatible gateways. Custom providers work only when their API follows one of these supported protocols. API keys are provider-specific; a key from one service will not authenticate another. Key is encrypted with Android Keystore and never committed to GitHub.", style = MaterialTheme.typography.bodySmall)
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    OutlinedButton(onClick = { endpoint = "https://generativelanguage.googleapis.com/v1beta"; model = "gemini-2.5-flash" }) { Text("GEMINI") }
+                                    OutlinedButton(onClick = { endpoint = "https://api.openai.com/v1"; model = "gpt-4.1-mini" }) { Text("OPENAI") }
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    OutlinedButton(onClick = { endpoint = "https://api.anthropic.com/v1"; model = "claude-3-5-haiku-latest" }) { Text("CLAUDE") }
+                                    OutlinedButton(onClick = { endpoint = "https://openrouter.ai/api/v1"; model = "openai/gpt-4.1-mini" }) { Text("OPENROUTER") }
+                                }
+                                OutlinedButton(onClick = { endpoint = "https://api.deepseek.com/v1"; model = "deepseek-chat" }) { Text("DEEPSEEK") }
                             }
                         },
                         confirmButton = {
