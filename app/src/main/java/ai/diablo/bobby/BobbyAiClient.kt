@@ -13,6 +13,38 @@ object BobbyAiClient {
     private fun isOpenAiResponses(settings: AiSettings): Boolean =
         settings.endpoint.trimEnd('/').equals("https://api.openai.com/v1", ignoreCase = true)
 
+    private fun usesAnthropic(settings: AiSettings): Boolean =
+        settings.endpoint.contains("api.anthropic.com", ignoreCase = true)
+
+    private fun postAnthropic(settings: AiSettings, body: JSONObject, networkProxy: Proxy? = null): JSONObject {
+        val url = settings.endpoint.trimEnd('/') + "/messages"
+        val connection = (if (networkProxy == null) URL(url).openConnection() else URL(url).openConnection(networkProxy)) as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 20000
+            connection.readTimeout = 90000
+            connection.doOutput = true
+            connection.setRequestProperty("x-api-key", settings.apiKey)
+            connection.setRequestProperty("anthropic-version", "2023-06-01")
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            val code = connection.responseCode
+            val raw = (if (code in 200..299) connection.inputStream else connection.errorStream)
+                ?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) {
+                val detail = runCatching { JSONObject(raw).optJSONObject("error")?.optString("message") }.getOrNull()
+                throw IllegalStateException(detail?.takeIf { it.isNotBlank() } ?: "Anthropic API returned HTTP $code.")
+            }
+            return JSONObject(raw)
+        } finally { connection.disconnect() }
+    }
+
+    private fun anthropicText(json: JSONObject): String {
+        val content = json.optJSONArray("content") ?: JSONArray()
+        return (0 until content.length()).mapNotNull { content.optJSONObject(it)?.takeIf { item -> item.optString("type") == "text" }?.optString("text") }
+            .filter { it.isNotBlank() }.joinToString("\\n").trim()
+    }
+
     fun usesGemini(settings: AiSettings): Boolean =
         settings.endpoint.contains("generativelanguage.googleapis.com", ignoreCase = true)
 
@@ -162,7 +194,17 @@ object BobbyAiClient {
                     "MULTILINGUAL RULE: Understand and respond in the same language the user uses, automatically detecting language without asking. Support mixed-language and code-switched messages. Preserve names and meaning. Do not force English. If the user switches language, switch with them. For translation requests, use the requested target language. " +
                     profileContext
                 val recent = conversation.takeLast(24)
-                val json = if (usesGemini(settings)) {
+                val json = if (usesAnthropic(settings)) {
+                    val messages = JSONArray()
+                    recent.forEach { line ->
+                        messages.put(JSONObject().put("role", if (line.fromBobby) "assistant" else "user").put("content", line.text))
+                    }
+                    retryTransient { postAnthropic(settings, JSONObject()
+                        .put("model", settings.model)
+                        .put("max_tokens", 2048)
+                        .put("system", systemPrompt)
+                        .put("messages", messages), networkProxy) }
+                } else if (usesGemini(settings)) {
                     val contents = JSONArray()
                     recent.forEach { line ->
                         contents.put(JSONObject()
@@ -198,7 +240,8 @@ object BobbyAiClient {
                         .put("temperature", 0.7)
                         .put("stream", false), networkProxy = networkProxy) }
                 }
-                val content = if (usesGemini(settings)) geminiText(json)
+                val content = if (usesAnthropic(settings)) anthropicText(json)
+                    else if (usesGemini(settings)) geminiText(json)
                     else if (isOpenAiResponses(settings)) readResponseText(json)
                     else json.getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content").trim()
                 require(content.isNotBlank()) { "The AI service returned an empty reply." }
