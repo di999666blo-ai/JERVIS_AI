@@ -246,8 +246,24 @@ private class HumanRenderer(initialLook: BobbyAvatarLook, initialActive: Boolean
         // Long hair panels and a soft fringe; hair style selection changes length and fringe.
         val hairLength = 0.38f + (current.hair % 5) * 0.12f
         val hairSway = sin(t * 2.1f) * 3.2f
-        part(-0.29f,2.28f - hairLength*0.34f + bob,-0.19f,0.105f,hairLength,0.12f,hair,0f,-0.04f + hairSway)
-        part(0.29f,2.28f - hairLength*0.34f + bob,-0.19f,0.105f,hairLength,0.12f,hair,0f,0.04f + hairSway)
+        val sideHairY = 2.28f - hairLength*0.34f + bob
+        val sideHairWidth = if (current.hair == 4 || current.hair == 8) 0.14f else 0.105f
+        part(-0.29f,sideHairY,-0.19f,sideHairWidth,hairLength,0.12f,hair,0f,-0.04f + hairSway)
+        part(0.29f,sideHairY,-0.19f,sideHairWidth,hairLength,0.12f,hair,0f,0.04f + hairSway)
+        // Ten visibly different low-poly hairstyles: bob, long, tied-back, fringe,
+        // curls (clustered locks), side sweep, high bun, twin tails, shoulder cut, and ponytail.
+        when (current.hair) {
+            0 -> { part(0f,2.34f+bob,-0.16f,0.34f,0.20f,0.22f,hair,0f,0f) }
+            1 -> { part(-0.34f,2.18f+bob,-0.12f,0.08f,0.43f,0.12f,hair,0f,-8f); part(0.34f,2.18f+bob,-0.12f,0.08f,0.43f,0.12f,hair,0f,8f) }
+            2 -> { part(0f,2.17f+bob,-0.28f,0.19f,0.40f,0.12f,hair,0f,0f); part(0.02f,2.62f+bob,-0.24f,0.22f,0.20f,0.15f,hair) }
+            3 -> { part(-0.20f,2.66f+bob,0.23f,0.18f,0.13f,0.10f,hair,0f,-18f); part(0.16f,2.66f+bob,0.23f,0.18f,0.13f,0.10f,hair,0f,12f) }
+            4 -> { for (i in 0..2) { part(-0.36f,2.43f-i*0.18f+bob,-0.10f,0.12f,0.13f,0.13f,hair,0f,hairSway); part(0.36f,2.43f-i*0.18f+bob,-0.10f,0.12f,0.13f,0.13f,hair,0f,-hairSway) } }
+            5 -> { part(-0.20f,2.66f+bob,0.24f,0.20f,0.12f,0.11f,hair,0f,-30f); part(0.10f,2.70f+bob,0.24f,0.18f,0.10f,0.10f,hair,0f,18f) }
+            6 -> { part(0f,2.94f+bob,-0.03f,0.20f,0.16f,0.18f,hair,0f,0f) }
+            7 -> { part(-0.43f,2.10f+bob,-0.16f,0.12f,0.34f,0.13f,hair,0f,hairSway); part(0.43f,2.10f+bob,-0.16f,0.12f,0.34f,0.13f,hair,0f,-hairSway) }
+            8 -> { part(-0.31f,2.30f+bob,-0.18f,0.13f,0.25f,0.13f,hair); part(0.31f,2.30f+bob,-0.18f,0.13f,0.25f,0.13f,hair) }
+            9 -> { part(0.34f,2.12f+bob,-0.30f,0.11f,0.44f,0.12f,hair,0f,18f); part(0.39f,2.48f+bob,-0.20f,0.13f,0.13f,0.13f,hair) }
+        }
         part(-0.13f,2.69f + bob,0.235f,0.16f,0.105f,0.105f,hair,0f,-12f)
         part(0.08f,2.68f + bob,0.245f,0.15f,0.09f,0.105f,hair,0f,9f)
         // Face details: eye whites, irises, pupils, brows, nose and lips.
