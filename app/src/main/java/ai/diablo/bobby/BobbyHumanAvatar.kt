@@ -59,6 +59,7 @@ fun BobbyAvatarCustomizer(initial:BobbyAvatarLook,onSave:(BobbyAvatarLook)->Unit
     var look by remember { mutableStateOf(initial) }
     AlertDialog(onDismissRequest=onClose,title={Text("BOBBY • AVATAR STUDIO")},text={
         Column(Modifier.heightIn(max=560.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+            BobbyCharacterAssetImport()
             BobbyHumanAvatar(look,Modifier.fillMaxWidth().height(220.dp).background(Color(0xFF09070A),RoundedCornerShape(14.dp)))
             Text("Facial expression preset: "+(look.expression+1)+" / 100")
             Slider(look.expression.toFloat(),{look=look.copy(expression=it.toInt())},valueRange=0f..99f)
