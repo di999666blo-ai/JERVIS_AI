@@ -58,7 +58,7 @@ fun BobbyHumanAvatar(look: BobbyAvatarLook, modifier: Modifier = Modifier, activ
 fun BobbyAvatarCustomizer(initial:BobbyAvatarLook,onSave:(BobbyAvatarLook)->Unit,onClose:()->Unit) {
     var look by remember { mutableStateOf(initial) }
     AlertDialog(onDismissRequest=onClose,title={Text("BOBBY • AVATAR STUDIO")},text={
-        Column(Modifier.heightIn(max=560.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.heightIn(max=560.dp).verticalScroll(androidx.compose.foundation.rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             BobbyCharacterAssetImport()
             BobbyHumanAvatar(look,Modifier.fillMaxWidth().height(220.dp).background(Color(0xFF09070A),RoundedCornerShape(14.dp)))
             Text("Facial expression preset: "+(look.expression+1)+" / 100")
