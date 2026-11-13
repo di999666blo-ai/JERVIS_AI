@@ -702,12 +702,96 @@ private fun BobbyHome(
                     settingsOpen = true
                     "Opening AI Settings."
                 }
+                command in listOf("open files", "open my files", "open documents", "browse files") -> {
+                    filePicker.launch(arrayOf("*/*"))
+                    "Opening your files."
+                }
+                command in listOf("open agents", "open agent manager", "open task agents", "open ai agents") -> {
+                    agentOpen = true
+                    "Opening the BOBBY Agent Centre."
+                }
+                command in listOf("open updates", "open update manager", "check for updates") -> {
+                    updateOpen = true
+                    "Opening BOBBY update settings."
+                }
+                command in listOf("open deriv", "open deriv dashboard", "open trading dashboard") -> {
+                    derivOpen = true
+                    "Opening the Deriv workspace."
+                }
+                command in listOf("open mcp", "open mcp manager", "manage mcp servers", "manage tools") -> {
+                    mcpManagerOpen = true
+                    "Opening MCP server and tool management."
+                }
+                command in listOf("open oauth", "open provider sign in", "open account sign in", "connect account") -> {
+                    oauthConnectorOpen = true
+                    "Opening provider sign-in connections."
+                }
+                command in listOf("open web research", "open research", "open research tools") -> {
+                    webResearchOpen = true
+                    "Opening Web Research."
+                }
+                command in listOf("open dark research", "open dark mode research", "open private research") -> {
+                    darkResearchOpen = true
+                    "Opening the separate Dark Research workspace."
+                }
+                command in listOf("open social", "open auto post", "open social studio", "open social automation") -> {
+                    autoPostOpen = true
+                    "Opening Social Automation."
+                }
+                command in listOf("open 3d studio", "open image 3d studio", "open 3d generator") -> {
+                    image3dStudioOpen = true
+                    "Opening the image and 3D generation studio."
+                }
+                command in listOf("open voice clone", "open custom voice", "customise bobby voice", "customize bobby voice") -> {
+                    voiceCloneOpen = true
+                    "Opening BOBBY Voice Studio."
+                }
+                command in listOf("open offline voice library", "open voice library", "open offline voices") -> {
+                    offlineVoiceLibraryOpen = true
+                    "Opening the offline voice library."
+                }
+                command in listOf("open integrations", "open connected services", "open integrations manager") -> {
+                    integrationsOpen = true
+                    "Opening connected integrations."
+                }
+                command in listOf("open dexter", "open dexter workspace") -> {
+                    dexterOpen = true
+                    "Opening Dexter."
+                }
+                command in listOf("open trader skills", "open trading skills") -> {
+                    traderSkillsOpen = true
+                    "Opening Trader Skills."
+                }
+                command in listOf("open chart agents", "open chart analysis agents") -> {
+                    chartAgentsOpen = true
+                    "Opening Chart Agents."
+                }
+                command in listOf("open history", "show history", "open chat history") -> {
+                    chatSearch = ""
+                    sessions = conversationStore.list(activeMode)
+                    historyOpen = true
+                    "Opening chat history."
+                }
+                command in listOf("open menu", "open sidebar", "show menu") -> {
+                    sidebarOpen = true
+                    "Opening the navigation menu."
+                }
+                command in listOf("open model menu", "choose ai model", "change ai model") -> {
+                    modelMenuOpen = true
+                    "Opening the AI model selector."
+                }
                 command.startsWith("open ") || command.startsWith("launch ") || command.startsWith("start ") -> {
                     val appName = command.substringAfter(' ').trim()
                     runCatching { BobbyAndroidActions.openApp(appContext, appName) }
                         .fold({ "Opening $it." }, { "I couldn't open that app: ${it.message ?: "not found"}" })
                 }
-                else -> "I recognised the Bobby command, but that action isn't connected yet: $explicitCommand. I'll keep normal conversation separate from commands."
+                else -> {
+                    // Reuse the existing local action handlers (alarms, screen reading,
+                    // accessibility taps/typing/scrolling, Back/Home) before falling back to chat.
+                    // The prefix is removed once, so this cannot recurse indefinitely.
+                    send(explicitCommand)
+                    return
+                }
             }
             chat.add(ChatLine(false, clean))
             chat.add(ChatLine(true, commandReply))
