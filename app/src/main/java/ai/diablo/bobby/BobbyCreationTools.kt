@@ -276,11 +276,11 @@ ${body}
 }
 
 @Composable
-fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
+fun BobbyCreationToolsDialog(initialTab: String = "FILES", onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
     val context = LocalContext.current
     val engine = remember { BobbyCreationEngine(context) }
     val handler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
-    var tab by remember { mutableStateOf("FILES") }
+    var tab by remember { mutableStateOf(initialTab.uppercase().takeIf { it in setOf("FILES", "IMAGE", "VIDEO", "AUDIO", "MUSIC") } ?: "FILES") }
     var keyDraft by remember { mutableStateOf("") }
     var fileTitle by remember { mutableStateOf("My creation") }
     var fileBody by remember { mutableStateOf("") }

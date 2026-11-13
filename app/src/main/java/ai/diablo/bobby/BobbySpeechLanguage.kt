@@ -6,19 +6,24 @@ import java.util.Locale
 /** Language selection and safe-length chunking for Android's on-device speech engine. */
 object BobbySpeechLanguage {
     /** Turn formatted chat text into clean speech without reading markdown symbols aloud. */
-    fun toSpeakableText(text: String): String = text
-        .replace(Regex("(?s)```.*?```"), " ")
-        .replace(Regex("!\\[[^]]*]\\([^)]*\\)"), " ")
-        .replace(Regex("\\[([^]]+)]\\([^)]*\\)"), "$1")
-        .replace(Regex("https?://\\S+"), " link ")
-        .replace(Regex("(?m)^\\s{0,3}#{1,6}\\s*"), "")
-        .replace(Regex("(?m)^\\s*[-*+]\\s+"), "")
-        .replace(Regex("(?m)^\\s*\\d+[.)]\\s+"), "")
-        .replace(Regex("[*_~#|<>]"), " ")
-        .replace(Regex("[\\[\\]{}()]"), " ")
-        .replace(Regex("[-–—]{2,}"), " ")
-        .replace(Regex("\\s+"), " ")
-        .trim()
+    fun toSpeakableText(text: String): String {
+        if (text.isBlank()) return ""
+        return text
+            .replace(Regex("(?s)```.*?```"), " ")
+            .replace(Regex("(?s)`.*?`"), " ")
+            .replace(Regex("!\\[[^]]*]\\([^)]*\\)"), " ")
+            .replace(Regex("\\[([^]]+)]\\([^)]*\\)"), "$1")
+            .replace(Regex("https?://\\S+"), " ")
+            .replace(Regex("(?m)^\\s{0,3}#{1,6}\\s*"), "")
+            .replace(Regex("(?m)^\\s*[-*+]\\s+"), "")
+            .replace(Regex("(?m)^\\s*\\d+[.)]\\s+"), "")
+            .replace(Regex("<[^>]+>"), " ")
+            .replace(Regex("[\\u2022\\u25cf\\u25aa\\u2013\\u2014]+"), ", ")
+            .replace(Regex("[^\\p{L}\\p{N}\\s,?'!]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .replace(Regex("\\s+([,?!])"), "$1")
+            .trim()
+    }
 
 
     fun detectLanguageTag(text: String): String {

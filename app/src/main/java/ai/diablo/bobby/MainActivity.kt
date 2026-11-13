@@ -367,6 +367,7 @@ private fun BobbyHome(
         }
     }
     var draft by remember { mutableStateOf("") }
+    var attachmentMenuOpen by remember { mutableStateOf(false) }
     var speakNextReply by remember { mutableStateOf(false) }
     var state by remember { mutableStateOf("IDLE") }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -1140,7 +1141,19 @@ private fun BobbyHome(
                         Column(Modifier.fillMaxWidth().background(chatBg).padding(horizontal = 12.dp, vertical = 10.dp)) {
                             Row(Modifier.fillMaxWidth().background(if (lightTheme) Color.White else Color(0xFF303030), RoundedCornerShape(24.dp)).padding(start = 16.dp, end = 6.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                 BasicTextField(value = draft, onValueChange = { draft = it }, modifier = Modifier.weight(1f).padding(vertical = 10.dp), textStyle = TextStyle(color = mainText, fontSize = 16.sp), cursorBrush = androidx.compose.ui.graphics.SolidColor(Neon), decorationBox = { inner -> if (draft.isEmpty()) Text("Message BOBBY...", color = mutedText); inner() })
-                                TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }, contentPadding = PaddingValues(6.dp)) { Text("+", color = Color.LightGray, fontSize = 22.sp) }
+                                Box {
+                                    TextButton(onClick = { attachmentMenuOpen = true }, contentPadding = PaddingValues(6.dp)) { Text("+", color = Color.LightGray, fontSize = 22.sp) }
+                                    DropdownMenu(expanded = attachmentMenuOpen, onDismissRequest = { attachmentMenuOpen = false }) {
+                                        DropdownMenuItem(text = { Text("Files") }, onClick = { attachmentMenuOpen = false; filePicker.launch(arrayOf("*/*")) })
+                                        DropdownMenuItem(text = { Text("Pictures") }, onClick = { attachmentMenuOpen = false; filePicker.launch(arrayOf("image/*")) })
+                                        DropdownMenuItem(text = { Text("Plugins & integrations") }, onClick = { attachmentMenuOpen = false; pluginsOpen = true })
+                                        DropdownMenuItem(text = { Text("Think deeper • Agent desk") }, onClick = { attachmentMenuOpen = false; agentOpen = true })
+                                        DropdownMenuItem(text = { Text("Research") }, onClick = { attachmentMenuOpen = false; webResearchOpen = true })
+                                        DropdownMenuItem(text = { Text("Create image / 3D") }, onClick = { attachmentMenuOpen = false; creativeStudioOpen = true })
+                                        DropdownMenuItem(text = { Text("Generate video") }, onClick = { attachmentMenuOpen = false; videoStudioOpen = true })
+                                        DropdownMenuItem(text = { Text("Memory vault") }, onClick = { attachmentMenuOpen = false; memoryItems = memoryStore.list(); memoryOpen = true })
+                                    }
+                                }
                                 Button(onClick = { send(draft) }, enabled = draft.isNotBlank() && state != "THINKING" && state != "READING FILE", shape = CircleShape, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(40.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("↑", fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
                             }
                             if (recordingActive) {
@@ -1182,7 +1195,7 @@ private fun BobbyHome(
                                             recordingPendingPermission = true
                                             recordingPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
                                         }
-                                    }) { Text(if (recordingActive) "■ STOP & SAVE" else "● VOICE NOTE", color = if (recordingActive) Neon else Color(0xFFFF5252)) }
+                                    }) { Text(if (recordingActive) "■ SAVE AUDIO FILE" else "● RECORD AUDIO FILE", color = if (recordingActive) Neon else Color(0xFFFF5252)) }
                                     TextButton(onClick = { onStopSpeech(); state = "IDLE" }) { Text("■ STOP SPEECH", color = Neon) }
                                 }
                                 if (recordingActive || recordingStatus != "NOT RECORDING") Text(recordingStatus, color = if (recordingActive) Neon else Color.LightGray, style = MaterialTheme.typography.labelSmall)
@@ -1946,12 +1959,11 @@ private fun BobbyHome(
                     )
                 }
                 if (videoStudioOpen) {
-                    BobbyVideoStudioDialog(onDismiss = { videoStudioOpen = false }, onGenerate = { prompt, done ->
-                        val cfg = BobbyConfigStore(appContext)
-                        BobbyAiClient.reply(AiSettings(cfg.endpoint(), cfg.model(), cfg.apiKey()),
-                            listOf(ChatLine(false, prompt)),
-                            "You are BOBBY VIDEO STUDIO, a careful video producer. Return a usable production package with timed scenes, concise narration and platform-ready copy. Do not claim a video file was rendered.") { done(it) }
-                    })
+                    BobbyCreationToolsDialog(
+                        initialTab = "VIDEO",
+                        onDismiss = { videoStudioOpen = false },
+                        onOpenImage3d = { videoStudioOpen = false; image3dStudioOpen = true }
+                    )
                 }
                 if (autoPostOpen) {
                     BobbyAutoPostDialog(onDismiss = { autoPostOpen = false })
