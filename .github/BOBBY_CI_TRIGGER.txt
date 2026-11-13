@@ -1,1 +1,2 @@
-Trigger Android CI after the secure Deriv connector foundation commit.
+BOBBY Android build verification trigger
+Latest source changes: spoken-chat mode and speech cleanup.
