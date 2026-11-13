@@ -261,7 +261,6 @@ private fun BobbyHome(
 ) {
     val appContext = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
-    val chatListState = rememberLazyListState()
     val hostActivity = appContext as? ComponentActivity
     val modeStore = remember { BobbyModeStore(appContext) }
     var activeMode by remember { mutableStateOf(modeStore.mode()) }
@@ -277,11 +276,18 @@ private fun BobbyHome(
             if (isEmpty()) add(ChatLine(true, when (activeMode) { BobbyMode.FRIENDLY -> "Hey, I’m Bobby. Friendly Mode is ready. 😊"; BobbyMode.WORKING -> "BOBBY WORK MODE READY • Let’s organise tasks, projects, documents and focused work."; BobbyMode.DARK -> "DARK MODE ACTIVE • Privacy-focused research workspace. Tor Browser does not route BOBBY traffic." }))
         }
     }
+    // Start a restored conversation at its newest message. Never replay a long scroll
+    // from the first message every time the app is reopened.
+    val chatListState = rememberLazyListState(initialFirstVisibleItemIndex = (chat.size - 1).coerceAtLeast(0))
     LaunchedEffect(activeMode, activeSessionId, chat.size, chat.lastOrNull()?.text) {
-        if (chat.isNotEmpty()) chatListState.animateScrollToItem(chat.size - 1)
         modeStore.saveHistory(activeMode, chat.toList())
         conversationStore.save(activeMode, activeSessionId, chat.toList())
         sessions = conversationStore.list(activeMode)
+    }
+    // Only scroll when the conversation actually changes; restored history is already
+    // positioned at the bottom by the initial list state above.
+    LaunchedEffect(activeMode, activeSessionId, chat.size, chat.lastOrNull()?.text) {
+        if (chat.isNotEmpty()) chatListState.animateScrollToItem(chat.size - 1)
     }
     val memoryStore = remember { BobbyMemoryStore(appContext) }
     val socialCompanion = remember { BobbySocialCompanion(appContext) }
