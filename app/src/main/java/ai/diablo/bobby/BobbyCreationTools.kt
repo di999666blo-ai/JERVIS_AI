@@ -216,7 +216,7 @@ ${body}
                 require(completed) { "Generation timed out. Check provider history before retrying." }
                 require(responseUrl.startsWith("https://queue.fal.run/")) { "Provider returned an invalid result URL." }
                 val result = falJson(responseUrl, "GET", key, null)
-                val media = result.optJSONObject(resultField) ?: error("No " + resultField + " output was returned.")
+                val media = result.optJSONObject(resultField) ?: result.optJSONArray(resultField)?.optJSONObject(0) ?: error("No " + resultField + " output was returned.")
                 val mediaUrl = media.optString("url")
                 val host = Uri.parse(mediaUrl).host.orEmpty()
                 require(mediaUrl.startsWith("https://") && (host == "fal.media" || host.endsWith(".fal.media"))) { "Media URL is not from the approved fal CDN." }
@@ -309,7 +309,7 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
         text = {
             Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("FILES", "VIDEO", "AUDIO", "MUSIC").forEach { item ->
+                    listOf("FILES", "IMAGE", "VIDEO", "AUDIO", "MUSIC").forEach { item ->
                         FilterChip(selected = tab == item, onClick = { tab = item }, label = { Text(item) })
                     }
                 }
@@ -351,7 +351,24 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
                         TextButton(onClick = { engine.removeFalKey(); status = "fal key removed from this phone." }) { Text("DISCONNECT") }
                     }
                     Text(if (engine.hasFalKey()) "FAL KEY SAVED" else "FAL NOT CONNECTED", color = Color(0xFFFF1744), style = MaterialTheme.typography.labelSmall)
-                    if (tab == "VIDEO") {
+                    if (tab == "IMAGE") {
+                        Text("AI IMAGE GENERATION • Flux • Create an original image from your description. Generation may use provider credits.")
+                        OutlinedTextField(value = videoPrompt, onValueChange = { videoPrompt = it.take(5000) }, label = { Text("Describe the image you want") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                        Button(enabled = !busy && engine.hasFalKey() && videoPrompt.isNotBlank(), onClick = {
+                            busy = true
+                            val input = JSONObject().put("prompt", videoPrompt.trim())
+                                .put("image_size", "landscape_4_3").put("num_images", 1)
+                                .put("enable_safety_checker", true)
+                            engine.generateFal("fal-ai/flux/dev", input, "images", "jpg",
+                                { message -> handler.post { status = message } }) { result ->
+                                handler.post {
+                                    busy = false
+                                    result.onSuccess { outputPath = it.absolutePath; status = "IMAGE READY • " + it.length() / 1024 + " KB" }
+                                        .onFailure { status = "IMAGE FAILED • " + it.message }
+                                }
+                            }
+                        }, modifier = Modifier.fillMaxWidth()) { Text(if (busy) "GENERATING IMAGE…" else "GENERATE IMAGE") }
+                    } else if (tab == "VIDEO") {
                         Text("Seedance 2.5 • 5-second 720p video • synchronized audio • MP4")
                         OutlinedTextField(value = videoPrompt, onValueChange = { videoPrompt = it.take(5000) }, label = { Text("Describe your video") }, minLines = 3, modifier = Modifier.fillMaxWidth())
                         Button(enabled = !busy && engine.hasFalKey() && videoPrompt.isNotBlank(), onClick = {
@@ -412,7 +429,7 @@ fun BobbyCreationToolsDialog(onDismiss: () -> Unit, onOpenImage3d: () -> Unit) {
                 }
                 if (outputPath.isNotBlank() && File(outputPath).exists()) {
                     Text("READY TO EXPORT • " + File(outputPath).name, color = Color(0xFFFF1744), style = MaterialTheme.typography.bodySmall)
-                    if (File(outputPath).extension.lowercase() in listOf("mp4", "m4v", "3gp", "mp3", "m4a", "aac", "wav", "ogg")) {
+                    if (File(outputPath).extension.lowercase() in listOf("jpg", "jpeg", "png", "webp", "mp4", "m4v", "3gp", "mp3", "m4a", "aac", "wav", "ogg")) {
                         BobbyGeneratedMediaPreview(outputPath, Modifier.fillMaxWidth())
                     }
                     Button(onClick = { export.launch(File(outputPath).name) }, modifier = Modifier.fillMaxWidth()) { Text("EXPORT TO PHONE") }
