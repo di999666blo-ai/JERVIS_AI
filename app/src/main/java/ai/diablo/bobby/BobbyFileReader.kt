@@ -3,6 +3,7 @@ package ai.diablo.bobby
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Xml
@@ -20,7 +21,8 @@ data class BobbyFileContent(
     val mimeType: String?,
     val text: String?,
     val note: String,
-    val imagePath: String? = null
+    val imagePath: String? = null,
+    val mediaPrompt: String? = null
 )
 
 /** Bounded local extraction for text, PDF, Office Open XML, ZIP and raster images. */
@@ -34,6 +36,12 @@ class BobbyFileReader(private val context: Context) {
         if (mime?.startsWith("image/") == true || listOf(".jpg", ".jpeg", ".png", ".webp", ".bmp").any { lower.endsWith(it) }) {
             val path = extractImage(uri, name)
             return BobbyFileContent(name, mime, null, "Image converted locally for vision analysis.", path)
+        }
+        if (mime?.startsWith("video/") == true || listOf(".mp4", ".m4v", ".3gp", ".webm", ".mkv").any { lower.endsWith(it) }) {
+            val frame = extractVideoFrame(uri, name)
+            return BobbyFileContent(name, mime, null,
+                "A representative video frame was extracted locally. Full-motion/audio understanding is not available in this importer.",
+                frame, "Please analyse this representative frame from the attached video named $name. Explain what is visible and note that this is only one frame, not a full video review.")
         }
         if (mime == "application/pdf" || lower.endsWith(".pdf")) {
             val text = context.contentResolver.openInputStream(uri)?.use { input ->
@@ -69,6 +77,26 @@ class BobbyFileReader(private val context: Context) {
             readBounded(input, MAX_FILE_BYTES).toString(Charsets.UTF_8)
         } ?: error("Could not open the selected file.")
         return BobbyFileContent(name, mime, text.take(MAX_TEXT_CHARS), "Text extracted locally. No file was uploaded automatically.")
+    }
+
+    private fun extractVideoFrame(uri: Uri, name: String): String {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(context, uri)
+            val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            require(durationMs > 0L) { "The selected video has no readable duration." }
+            val frameTimeUs = (durationMs / 2L).coerceAtLeast(0L) * 1000L
+            val bitmap = retriever.getFrameAtTime(frameTimeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                ?: error("Could not extract a frame from this video.")
+            val safeName = name.substringAfterLast('/').replace(Regex("[^A-Za-z0-9._-]"), "_").take(40)
+            val file = File(context.cacheDir, "bobby-video-frame-" + System.currentTimeMillis() + "-" + safeName + ".jpg")
+            try {
+                FileOutputStreamCompat.writeJpeg(bitmap, file, 78)
+                require(file.length() in 1..(4L * 1024 * 1024)) { "Extracted video frame is too large." }
+            } finally { bitmap.recycle() }
+            return file.absolutePath
+        } finally { runCatching { retriever.release() } }
     }
 
     private fun extractImage(uri: Uri, name: String): String {
