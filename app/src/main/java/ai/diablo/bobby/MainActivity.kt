@@ -157,7 +157,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                             latencyMs = android.os.SystemClock.elapsedRealtime() - requestStartedAt,
                             failureType = result.exceptionOrNull()?.javaClass?.simpleName.orEmpty()
                         )
-                        if (result.isFailure && offlineAi.isModelInstalled()) {
+                        if (result.isFailure && BobbyAiModeStore(this).mode() == BobbyAiMode.AUTO && offlineAi.isModelInstalled()) {
                             val offlinePrompt = history.takeLast(10).joinToString("\n") { line ->
                                 (if (line.fromBobby) "BOBBY: " else "USER: ") + line.text
                             }
@@ -169,9 +169,27 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         }
                         }
                     }
-                    askWithContext(if (needsLiveResearch && !BobbyAiClient.usesGemini(aiSettings))
-                        "No live search provider is connected for this AI provider. Do not claim to have browsed; explain that current sources could not be verified."
-                        else "")
+                    val offlinePrompt = completeContext + "\n\nRecent conversation:\n" + history.takeLast(10).joinToString("\n") { line ->
+                        (if (line.fromBobby) "BOBBY: " else "USER: ") + line.text
+                    }
+                    when (BobbyAiModeStore(this).mode()) {
+                        BobbyAiMode.OFFLINE -> {
+                            if (!offlineAi.isModelInstalled()) {
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    done(Result.failure(IllegalStateException("OFFLINE MODE selected, but no local model is installed. Open OFFLINE AI and download the model first.")))
+                                }
+                            } else offlineAi.reply(offlinePrompt) { localResult ->
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    done(localResult.map { "OFFLINE AI • " + it })
+                                }
+                            }
+                        }
+                        BobbyAiMode.AUTO, BobbyAiMode.ONLINE -> askWithContext(
+                            if (needsLiveResearch && !BobbyAiClient.usesGemini(aiSettings))
+                                "No live search provider is connected for this AI provider. Do not claim to have browsed; explain that current sources could not be verified."
+                            else ""
+                        )
+                    }
                 }
             )
         }
@@ -462,6 +480,8 @@ private fun BobbyHome(
     var model by remember { mutableStateOf(initialModel) }
     var apiKey by remember { mutableStateOf("") }
     var aiEnabled by remember { mutableStateOf(hasSavedKey) }
+    val aiModeStore = remember { BobbyAiModeStore(appContext) }
+    var aiMode by remember { mutableStateOf(aiModeStore.mode()) }
     var bubbleOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var pendingContactCall by remember { mutableStateOf("") }
     val contactsPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -1534,6 +1554,31 @@ private fun BobbyHome(
                         title = { Text("BOBBY OFFLINE AI") },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("AI ROUTING MODE", style = MaterialTheme.typography.labelLarge, color = Neon)
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                    listOf(BobbyAiMode.AUTO, BobbyAiMode.ONLINE, BobbyAiMode.OFFLINE).forEach { option ->
+                                        FilterChip(
+                                            selected = aiMode == option,
+                                            onClick = {
+                                                if (option == BobbyAiMode.OFFLINE && !offlineStore.status().installed) {
+                                                    offlineStatus = "Download the local model before selecting OFFLINE."
+                                                } else {
+                                                    aiMode = option
+                                                    aiModeStore.setMode(option)
+                                                }
+                                            },
+                                            label = { Text(option.label) }
+                                        )
+                                    }
+                                }
+                                Text(
+                                    when (aiMode) {
+                                        BobbyAiMode.AUTO -> "AUTO: online AI first; switch to the installed local model if online fails."
+                                        BobbyAiMode.ONLINE -> "ONLINE: cloud AI only. No offline fallback."
+                                        BobbyAiMode.OFFLINE -> "OFFLINE: run the downloaded model on this phone."
+                                    },
+                                    style = MaterialTheme.typography.bodySmall
+                                )
                                 Text("Local model: Qwen3 0.6B • LiteRT-LM • CPU inference")
                                 Text(offlineStatus, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
                                 if (offlineBusy) {
