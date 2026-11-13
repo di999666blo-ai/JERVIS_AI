@@ -113,7 +113,7 @@ The independent AI is not complete until:
 - Confirmed the app already routes explicit OFFLINE mode to local LiteRT-LM inference; AUTO uses the online provider first and may fall back locally after a failed online request; ONLINE stays online.
 - Confirmed approved local memories and profile/persona context are included in the prompt assembled for explicit OFFLINE chat.
 - Hardened model download/import: both paths now require the pinned SHA-256, enforce the supported 600–630 MB range, write to a temporary file, and preserve the previous installation until the replacement passes verification.
-- Model status now means checksum-verified installation, not merely a non-empty file.
+- Model status uses a cached verification marker so checking status does not hash a 614 MB file on the UI thread; a full checksum is rechecked on the inference worker when the file metadata no longer matches.
 - Improved inference safety: model load requires 1.8 GB of currently available RAM, verifies the installed model before loading, bounds oversized prompts while preserving the latest user context, and prevents model shutdown from racing a generation call.
 - Enabled the Android build workflow on this independent branch. The existing release-publishing condition remains restricted to `bobby-development`.
 
