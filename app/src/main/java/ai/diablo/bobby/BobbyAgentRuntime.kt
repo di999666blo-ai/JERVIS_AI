@@ -109,21 +109,21 @@ class BobbyAgentRuntime(context: Context) {
     fun routeSpecialist(request: String): BobbyAgentProfile {
         val text = request.lowercase()
         val selected = when {
-            listOf("deriv", "trade", "trading", "portfolio", "stake", "risk", "market", "chart").any(text::contains) -> "trading-risk"
-            listOf("android", "kotlin", "compose", "apk", "permission", "gradle", "phone").any(text::contains) -> "android"
-            listOf("security", "secret", "api key", "privacy", "permission", "token").any(text::contains) -> "security"
-            listOf("test", "verify", "bug", "crash", "build failed", "qa").any(text::contains) -> "qa"
-            listOf("image", "video", "audio", "music", "3d", "design", "creative").any(text::contains) -> "creative"
-            listOf("code", "coding", "github", "repository", "function", "implement").any(text::contains) -> "coding"
-            listOf("research", "latest", "source", "compare", "evidence", "news").any(text::contains) -> "research"
-            listOf("plan", "steps", "workflow", "organise", "organize").any(text::contains) -> "planner"
+            listOf("deriv", "trade", "trading", "portfolio", "stake", "risk", "market", "chart").any { keyword -> text.contains(keyword) } -> "trading-risk"
+            listOf("android", "kotlin", "compose", "apk", "permission", "gradle", "phone").any { keyword -> text.contains(keyword) } -> "android"
+            listOf("security", "secret", "api key", "privacy", "permission", "token").any { keyword -> text.contains(keyword) } -> "security"
+            listOf("test", "verify", "bug", "crash", "build failed", "qa").any { keyword -> text.contains(keyword) } -> "qa"
+            listOf("image", "video", "audio", "music", "3d", "design", "creative").any { keyword -> text.contains(keyword) } -> "creative"
+            listOf("code", "coding", "github", "repository", "function", "implement").any { keyword -> text.contains(keyword) } -> "coding"
+            listOf("research", "latest", "source", "compare", "evidence", "news").any { keyword -> text.contains(keyword) } -> "research"
+            listOf("plan", "steps", "workflow", "organise", "organize").any { keyword -> text.contains(keyword) } -> "planner"
             else -> "general"
         }
-        return specialist(selected) ?: specialist("general")!!
+        return specialist(selected) ?: bobbySpecialistProfiles.first()
     }
 
     fun specialistInstruction(agentId: String, request: String): String {
-        val agent = specialist(agentId) ?: specialist("general")!!
+        val agent = specialist(agentId) ?: bobbySpecialistProfiles.first()
         return """
 You are ${agent.name}, a specialist inside BOBBY's on-device agent system.
 Purpose: ${agent.purpose}
