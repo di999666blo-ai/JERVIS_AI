@@ -304,6 +304,21 @@ private fun BobbyHome(
     var recordingActive by remember { mutableStateOf(false) }
     var recordingPendingPermission by remember { mutableStateOf(false) }
     var recordingStatus by remember { mutableStateOf("NOT RECORDING") }
+    var recordingAmplitude by remember { mutableIntStateOf(0) }
+    var recordingElapsedSeconds by remember { mutableIntStateOf(0) }
+    LaunchedEffect(recordingActive) {
+        if (recordingActive) {
+            val startedAt = android.os.SystemClock.elapsedRealtime()
+            while (recordingActive) {
+                recordingAmplitude = audioRecorder.amplitude()
+                recordingElapsedSeconds = ((android.os.SystemClock.elapsedRealtime() - startedAt) / 1000L).toInt()
+                kotlinx.coroutines.delay(100)
+            }
+        } else {
+            recordingAmplitude = 0
+            recordingElapsedSeconds = 0
+        }
+    }
     val recordingPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted && recordingPendingPermission) {
             recordingPendingPermission = false
@@ -1008,6 +1023,24 @@ private fun BobbyHome(
                                 TextButton(onClick = { filePicker.launch(arrayOf("*/*")) }, contentPadding = PaddingValues(6.dp)) { Text("+", color = Color.LightGray, fontSize = 22.sp) }
                                 Button(onClick = { send(draft) }, enabled = draft.isNotBlank() && state != "THINKING" && state != "READING FILE", shape = CircleShape, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(40.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("↑", fontSize = 20.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) }
                             }
+                            if (recordingActive) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text("● REC", color = Neon, style = MaterialTheme.typography.labelMedium)
+                                    Text("%02d:%02d".format(recordingElapsedSeconds / 60, recordingElapsedSeconds % 60), color = mainText, style = MaterialTheme.typography.labelMedium)
+                                    Spacer(Modifier.width(4.dp))
+                                    val level = (recordingAmplitude / 32767f).coerceIn(0f, 1f)
+                                    repeat(24) { index ->
+                                        val weight = 0.18f + (level * (0.25f + 0.75f * kotlin.math.abs(kotlin.math.sin(index * 0.72f))))
+                                        Box(Modifier.width(3.dp).height((5f + 25f * weight).dp).background(Neon, CircleShape))
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Text("LIVE AUDIO", color = mutedText, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     TextButton(onClick = { launchVoiceInput() }) { Text("🎙 TALK", color = Color.LightGray) }
@@ -1017,7 +1050,7 @@ private fun BobbyHome(
                                                 val saved = audioRecorder.stop()
                                                 recordingActive = false
                                                 recordingStatus = "SAVED • ${saved.name}"
-                                                chat.add(ChatLine(true, "Recording saved in BOBBY's private Recordings folder: ${saved.name}"))
+                                                chat.add(ChatLine(true, "Voice note saved in BOBBY's private Recordings folder: ${saved.name}"))
                                             }.onFailure {
                                                 recordingActive = false
                                                 recordingStatus = "RECORDING ERROR • " + (it.message ?: "Could not save.")
@@ -1029,11 +1062,10 @@ private fun BobbyHome(
                                             recordingPendingPermission = true
                                             recordingPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
                                         }
-                                    }) { Text(if (recordingActive) "■ STOP RECORDING" else "● RECORD", color = if (recordingActive) Neon else Color(0xFFFF5252)) }
-                                    TextButton(onClick = { onStopSpeech(); state = "IDLE" }) { Text("■ STOP VOICE", color = Neon) }
+                                    }) { Text(if (recordingActive) "■ STOP & SAVE" else "● VOICE NOTE", color = if (recordingActive) Neon else Color(0xFFFF5252)) }
+                                    TextButton(onClick = { onStopSpeech(); state = "IDLE" }) { Text("■ STOP SPEECH", color = Neon) }
                                 }
                                 if (recordingActive || recordingStatus != "NOT RECORDING") Text(recordingStatus, color = if (recordingActive) Neon else Color.LightGray, style = MaterialTheme.typography.labelSmall)
-                                Text("BOBBY can make mistakes. Check important information.", color = Color.Gray, style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
