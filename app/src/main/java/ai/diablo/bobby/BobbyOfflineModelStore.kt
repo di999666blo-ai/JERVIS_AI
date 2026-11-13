@@ -36,8 +36,8 @@ class BobbyOfflineModelStore(context: Context) {
         thread(name = "bobby-model-download") {
             val result = runCatching {
                 val available = StatFs(dir.absolutePath).availableBytes
-                require(available > EXPECTED_BYTES + INSTALL_HEADROOM_BYTES) {
-                    "Not enough free storage. At least " + ((EXPECTED_BYTES + INSTALL_HEADROOM_BYTES) / MIB) + " MB free is required."
+                require(available > MAX_MODEL_BYTES + INSTALL_HEADROOM_BYTES) {
+                    "Not enough free storage. At least " + ((MAX_MODEL_BYTES + INSTALL_HEADROOM_BYTES) / MIB) + " MB free is required."
                 }
                 temp.delete()
                 val connection = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
@@ -49,7 +49,8 @@ class BobbyOfflineModelStore(context: Context) {
                 try {
                     val code = connection.responseCode
                     require(code in 200..299) { "Model download failed (HTTP " + code + ")." }
-                    require(connection.contentLengthLong == EXPECTED_BYTES) { "Unexpected model size. Download cancelled." }
+                    val expected = connection.contentLengthLong
+                    require(expected in MIN_MODEL_BYTES..MAX_MODEL_BYTES) { "Unexpected model size. Download cancelled." }
                     val digest = MessageDigest.getInstance("SHA-256")
                     temp.outputStream().buffered().use { output ->
                         connection.inputStream.buffered().use { input ->
@@ -59,12 +60,14 @@ class BobbyOfflineModelStore(context: Context) {
                                 val count = input.read(buffer)
                                 if (count < 0) break
                                 total += count
-                                require(total <= EXPECTED_BYTES) { "Model exceeded its pinned size." }
+                                require(total <= MAX_MODEL_BYTES) { "Model exceeded the supported size window." }
                                 digest.update(buffer, 0, count)
                                 output.write(buffer, 0, count)
-                                onProgress(total, EXPECTED_BYTES)
+                                onProgress(total, expected)
                             }
-                            require(total == EXPECTED_BYTES) { "Download incomplete. Received " + total + " of " + EXPECTED_BYTES + " bytes." }
+                            require(total == expected && total in MIN_MODEL_BYTES..MAX_MODEL_BYTES) {
+                                "Download incomplete or unexpected size. Received " + total + " of " + expected + " bytes."
+                            }
                         }
                     }
                     verifyDigest(digest.digest())
@@ -93,11 +96,13 @@ class BobbyOfflineModelStore(context: Context) {
                         val count = input.read(buffer)
                         if (count < 0) break
                         total += count
-                        require(total <= EXPECTED_BYTES) { "Selected file is larger than the supported model." }
+                        require(total <= MAX_MODEL_BYTES) { "Selected file is larger than the supported model." }
                         digest.update(buffer, 0, count)
                         output.write(buffer, 0, count)
                     }
-                    require(total == EXPECTED_BYTES) { "Wrong model size. Select the official Qwen3 0.6B LiteRT-LM file." }
+                    require(total in MIN_MODEL_BYTES..MAX_MODEL_BYTES) {
+                        "Wrong model size. Select the official Qwen3 0.6B LiteRT-LM file."
+                    }
                 }
             }
             verifyDigest(digest.digest())
@@ -116,7 +121,7 @@ class BobbyOfflineModelStore(context: Context) {
     }
 
     private fun isValidModel(file: File): Boolean {
-        if (!file.isFile || file.length() != EXPECTED_BYTES) return false
+        if (!file.isFile || file.length() !in MIN_MODEL_BYTES..MAX_MODEL_BYTES) return false
         val digest = MessageDigest.getInstance("SHA-256")
         file.inputStream().buffered().use { input ->
             val buffer = ByteArray(256 * 1024)
@@ -153,7 +158,8 @@ class BobbyOfflineModelStore(context: Context) {
     companion object {
         private const val MODEL_FILE = "bobby-assistant.litertlm"
         private const val MODEL_URL = "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/Qwen3-0.6B.litertlm"
-        private const val EXPECTED_BYTES = 614_000_000L
+        private const val MIN_MODEL_BYTES = 600_000_000L
+        private const val MAX_MODEL_BYTES = 630_000_000L
         private const val INSTALL_HEADROOM_BYTES = 100L * 1024L * 1024L
         private const val MIB = 1024L * 1024L
         private const val EXPECTED_SHA256 = "c5f39b4191926786c3e6668b62af4d6eb15248dfc7a5348252a9b406f33f2108"
