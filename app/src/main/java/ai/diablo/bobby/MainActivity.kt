@@ -88,8 +88,9 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
             val configStore = BobbyConfigStore(this)
             BobbyHome(
                 onSpeak = { text ->
-                    neuralVoice.speak(text, configStore.apiKey()) {
-                        if (ttsReady) tts?.let { BobbySpeechLanguage.speakLocal(it, text) }
+                    val speakable = BobbySpeechLanguage.toSpeakableText(text)
+                    neuralVoice.speak(speakable, configStore.apiKey()) {
+                        if (ttsReady) tts?.let { BobbySpeechLanguage.speakLocal(it, speakable) }
                     }
                 },
                 onStopSpeech = { neuralVoice.stop(); tts?.stop() },
