@@ -1927,39 +1927,77 @@ private fun BobbyHome(
 @Composable
 private fun BobbyMessageContent(text: String, fromBobby: Boolean, lightTheme: Boolean) {
     val clipboard = LocalClipboardManager.current
+    val bodyColor = if (fromBobby && lightTheme) Color(0xFF171717) else Color.White
     val codePattern = Regex("```([^\\n`]*)\\n([\\s\\S]*?)```")
     val matches = codePattern.findAll(text).toList()
+
+    @Composable
+    fun RichTextBlock(source: String) {
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            source.lines().forEach { raw ->
+                val line = raw.trimEnd()
+                when {
+                    line.isBlank() -> Spacer(Modifier.height(3.dp))
+                    line.trim() == "---" || line.trim() == "***" -> HorizontalDivider(color = if (lightTheme) Color(0xFFDDDDDD) else Color(0xFF444444))
+                    line.startsWith("### ") -> Text(line.removePrefix("### "), color = bodyColor, style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    line.startsWith("## ") -> Text(line.removePrefix("## "), color = bodyColor, style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    line.startsWith("# ") -> Text(line.removePrefix("# "), color = bodyColor, style = MaterialTheme.typography.titleLarge, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    line.trimStart().startsWith("> ") -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(Modifier.width(3.dp).heightIn(min = 20.dp).background(Neon, RoundedCornerShape(2.dp)))
+                        Text(line.trimStart().removePrefix("> "), color = bodyColor.copy(alpha = 0.82f), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    line.trimStart().startsWith("- ") || line.trimStart().startsWith("* ") || line.trimStart().startsWith("• ") -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("•", color = Neon, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text(inlineMarkdown(line.trimStart().drop(2), bodyColor), color = bodyColor, style = MaterialTheme.typography.bodyLarge)
+                    }
+                    Regex("^\\s*\\d+[.)]\\s+").containsMatchIn(line) -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val marker = Regex("^\\s*(\\d+[.)])\\s+(.*)$").find(line)
+                        Text(marker?.groupValues?.get(1) ?: "1.", color = Neon, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text(inlineMarkdown(marker?.groupValues?.get(2) ?: line, bodyColor), color = bodyColor, style = MaterialTheme.typography.bodyLarge)
+                    }
+                    else -> Text(inlineMarkdown(line, bodyColor), color = bodyColor, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+    }
+
     if (matches.isEmpty()) {
-        Text(text, Modifier.padding(horizontal = 14.dp, vertical = 11.dp),
-            color = if (fromBobby) (if (lightTheme) Color(0xFF171717) else Color.White) else Color.White,
-            style = MaterialTheme.typography.bodyLarge)
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 11.dp)) { RichTextBlock(text) }
         return
     }
     Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         var cursor = 0
         matches.forEach { match ->
-            if (match.range.first > cursor) {
-                Text(text.substring(cursor, match.range.first),
-                    color = if (lightTheme && fromBobby) Color(0xFF171717) else Color.White,
-                    style = MaterialTheme.typography.bodyLarge)
-            }
+            if (match.range.first > cursor) RichTextBlock(text.substring(cursor, match.range.first))
             val language = match.groupValues[1].trim().ifBlank { "CODE" }
             val code = match.groupValues[2].trimEnd()
             Column(Modifier.fillMaxWidth().background(if (lightTheme) Color(0xFFF0F0F0) else Color(0xFF111111), RoundedCornerShape(8.dp)).padding(8.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(language.uppercase(), Modifier.weight(1f), color = if (lightTheme) Color(0xFF555555) else Color.LightGray, style = MaterialTheme.typography.labelSmall)
-                    TextButton(onClick = { clipboard.setText(AnnotatedString(code)) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                        Text("COPY", color = Neon, style = MaterialTheme.typography.labelSmall)
-                    }
+                    TextButton(onClick = { clipboard.setText(AnnotatedString(code)) }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) { Text("COPY", color = Neon, style = MaterialTheme.typography.labelSmall) }
                 }
-                Text(code, Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    color = if (lightTheme) Color(0xFF202020) else Color(0xFFE8E8E8),
-                    fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 17.sp)
+                Text(code, Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), color = if (lightTheme) Color(0xFF202020) else Color(0xFFE8E8E8), fontFamily = FontFamily.Monospace, fontSize = 12.sp, lineHeight = 17.sp)
             }
             cursor = match.range.last + 1
         }
-        if (cursor < text.length) {
-            Text(text.substring(cursor), color = if (lightTheme && fromBobby) Color(0xFF171717) else Color.White, style = MaterialTheme.typography.bodyLarge)
-        }
+        if (cursor < text.length) RichTextBlock(text.substring(cursor))
     }
+}
+
+private fun inlineMarkdown(source: String, color: Color): AnnotatedString = androidx.compose.ui.text.buildAnnotatedString {
+    val token = Regex("(\\*\\*.+?\\*\\*|__.+?__|\\*[^*]+\\*|_[^_]+_|\u0060[^\u0060]+\u0060)")
+    var cursor = 0
+    token.findAll(source).forEach { match ->
+        append(source.substring(cursor, match.range.first))
+        val value = match.value
+        when {
+            value.startsWith("**") || value.startsWith("__") -> pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold))
+            value.startsWith("`") -> pushStyle(androidx.compose.ui.text.SpanStyle(fontFamily = FontFamily.Monospace, background = Color(0x223F51B5)))
+            else -> pushStyle(androidx.compose.ui.text.SpanStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic))
+        }
+        append(if (value.startsWith("**") || value.startsWith("__") || value.startsWith("`")) value.substring(2.coerceAtMost(value.length), value.length - (if (value.startsWith("**") || value.startsWith("__")) 2 else 1)) else value.substring(1, value.length - 1))
+        pop()
+        cursor = match.range.last + 1
+    }
+    append(source.substring(cursor))
 }
