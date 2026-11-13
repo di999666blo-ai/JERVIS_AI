@@ -42,7 +42,7 @@ object BobbyAiClient {
     private fun anthropicText(json: JSONObject): String {
         val content = json.optJSONArray("content") ?: JSONArray()
         return (0 until content.length()).mapNotNull { content.optJSONObject(it)?.takeIf { item -> item.optString("type") == "text" }?.optString("text") }
-            .filter { it.isNotBlank() }.joinToString("\\n").trim()
+            .filter { it.isNotBlank() }.joinToString("\n").trim()
     }
 
     fun usesGemini(settings: AiSettings): Boolean =
@@ -77,7 +77,7 @@ object BobbyAiClient {
         val candidate = candidates.optJSONObject(0) ?: return ""
         val parts = candidate.optJSONObject("content")?.optJSONArray("parts") ?: JSONArray()
         val answer = (0 until parts.length()).mapNotNull { parts.optJSONObject(it)?.optString("text") }
-            .filter { it.isNotBlank() }.joinToString("\\n").trim()
+            .filter { it.isNotBlank() }.joinToString("\n").trim()
         val grounding = candidate.optJSONObject("groundingMetadata")?.optJSONArray("groundingChunks")
         val sources = linkedMapOf<String, String>()
         if (grounding != null) for (i in 0 until grounding.length()) {
@@ -86,8 +86,8 @@ object BobbyAiClient {
             val title = web.optString("title").ifBlank { uri }
             if (uri.startsWith("https://")) sources[uri] = title
         }
-        return if (sources.isEmpty()) answer else answer + "\\n\\nSources:\\n" +
-            sources.entries.joinToString("\\n") { "• ${it.value}: ${it.key}" }
+        return if (sources.isEmpty()) answer else answer + "\n\nSources:\n" +
+            sources.entries.joinToString("\n") { "• ${it.value}: ${it.key}" }
     }
 
     /**
@@ -108,7 +108,7 @@ object BobbyAiClient {
                 if ((!retryableHttp && !retryableNetwork) || attempt >= 4) throw error
                 // Respect provider guidance such as "try again in 17.8s" instead of
                 // hammering a rate-limited endpoint every half second.
-                val providerWaitMs = Regex("""(?i)try again in\\s+([0-9]+(?:\\.[0-9]+)?)\\s*s""")
+                val providerWaitMs = Regex("""(?i)try again in\s+([0-9]+(?:\.[0-9]+)?)\s*s""")
                     .find(message)?.groupValues?.get(1)?.toDoubleOrNull()
                     ?.times(1000.0)?.toLong()
                 val delayMs = (providerWaitMs ?: (750L * (1L shl (attempt - 1))))
