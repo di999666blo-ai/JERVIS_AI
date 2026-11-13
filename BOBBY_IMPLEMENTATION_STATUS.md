@@ -205,7 +205,7 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 
 ## 2026-11-13 — In-app specialist agent profiles
 - Added an on-device specialist profile registry for General Assistant, Planner, Research, Android, Coding, Security, QA/Verification, Creative Studio and Trading Risk.
-- Added a lightweight request router and specialist-specific instruction builder to the existing BobbyAgentRuntime. Existing registered tool inventory and task history remain intact.
-- Updated the capability hub to disclose that these are specialist prompts using BOBBY's configured AI provider, not separate models or unrestricted executors.
-- These profiles do not automatically execute external actions. Tool invocation still requires a real registered adapter and approval where consequential.
+- Added lightweight request routing and specialist-specific instruction building to the existing BobbyAgentRuntime. MainActivity now selects a specialist for each normal text-chat request and includes that specialist's instructions in the configured online AI context.
+- Existing registered tool inventory and task history remain intact. The capability hub discloses that these are specialist prompts using BOBBY's configured AI provider, not separate models or unrestricted executors.
+- These profiles improve role-specific reasoning but do not automatically execute external actions. Tool invocation still requires a real registered adapter and approval where consequential. Image-chat and offline-model paths do not yet share the specialist context.
 - Source changes committed; Android build/CI and physical-device behavior still require verification.
