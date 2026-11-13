@@ -803,7 +803,7 @@ private fun BobbyHome(
                     imported.onSuccess { file ->
                         when {
                             !file.imagePath.isNullOrBlank() -> {
-                                chat.add(ChatLine(false, "Please analyse attached image: ${file.name}"))
+                                chat.add(ChatLine(false, file.mediaPrompt ?: "Please analyse attached image: ${file.name}"))
                                 if (aiEnabled) {
                                     state = "THINKING"
                                     onAskAiWithImage(chat.toList(), file.imagePath) { response ->
