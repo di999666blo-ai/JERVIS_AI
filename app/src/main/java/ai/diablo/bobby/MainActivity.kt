@@ -410,6 +410,7 @@ private fun BobbyHome(
     var executionPreview by remember { mutableStateOf<BobbyExecutionPreview?>(null) }
     var executionStatus by remember { mutableStateOf("") }
     var permissionsOpen by remember { mutableStateOf(false) }
+    var openFilesRequested by remember { mutableStateOf(false) }
     var derivOpen by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
     var mcpManagerOpen by remember { mutableStateOf(false) }
@@ -703,7 +704,7 @@ private fun BobbyHome(
                     "Opening AI Settings."
                 }
                 command in listOf("open files", "open my files", "open documents", "browse files") -> {
-                    filePicker.launch(arrayOf("*/*"))
+                    openFilesRequested = true
                     "Opening your files."
                 }
                 command in listOf("open agents", "open agent manager", "open task agents", "open ai agents") -> {
@@ -1077,6 +1078,13 @@ private fun BobbyHome(
         if (android.os.Build.VERSION.SDK_INT >= 33) appContext.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
         else @Suppress("DEPRECATION") appContext.registerReceiver(receiver, filter)
         onDispose { runCatching { appContext.unregisterReceiver(receiver) } }
+    }
+
+    LaunchedEffect(openFilesRequested) {
+        if (openFilesRequested) {
+            openFilesRequested = false
+            filePicker.launch(arrayOf("*/*"))
+        }
     }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
