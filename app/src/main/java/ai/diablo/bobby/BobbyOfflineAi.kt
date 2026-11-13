@@ -29,12 +29,12 @@ class BobbyOfflineAi(context: Context) {
             val memoryManager = app.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             val memoryInfo = ActivityManager.MemoryInfo()
             memoryManager.getMemoryInfo(memoryInfo)
-            require(!memoryInfo.lowMemory && memoryInfo.availMem >= 700L * 1024L * 1024L) {
-                "Android is low on free RAM. Close other apps and try again, or use online AI. BOBBY has paused offline loading to avoid a crash."
+            require(!memoryInfo.lowMemory && memoryInfo.availMem >= MIN_FREE_RAM_BYTES) {
+                "Not enough free RAM to safely load the offline model. Close other apps and try again. This model can require around 2–3 GB of process memory; the phone may be unable to run it reliably."
             }
             val path = store.modelFile()
-            require(path.isFile && path.length() in 500_000_000L..750_000_000L) {
-                "The offline model is missing or incomplete. Open OFFLINE AI and download it again."
+            require(store.status().installed && path.isFile) {
+                "The offline model is missing or failed its integrity check. Open OFFLINE AI and download the official model again."
             }
             val newEngine = Engine(
                 EngineConfig(
@@ -47,7 +47,7 @@ class BobbyOfflineAi(context: Context) {
                 newEngine.initialize()
                 val config = ConversationConfig(
                     systemInstruction = Contents.of(
-                        "You are BOBBY, the user's personal AI assistant running fully offline on this phone. " +
+                        "You are BOBBY, an independent AI assistant running fully offline on this phone. " +
                         "Automatically detect the language of every user message and answer in that same language. " +
                         "Support multilingual and code-switched conversation; do not force English. " +
                         "Be accurate, practical, warm and direct. Never pretend to access the internet, phone, accounts, files or apps. " +
@@ -76,9 +76,15 @@ class BobbyOfflineAi(context: Context) {
                 }
                 try {
                     loadIfNeeded()
-                    val answer = requireNotNull(conversation).sendMessage(prompt).toString().trim()
-                    require(answer.isNotBlank()) { "The offline model returned an empty answer." }
-                    answer
+                    val boundedPrompt = boundPrompt(prompt)
+                    synchronized(this) {
+                        val activeConversation = requireNotNull(conversation) {
+                            "Offline AI was closed before generation could start. Please try again."
+                        }
+                        val answer = activeConversation.sendMessage(boundedPrompt).toString().trim()
+                        require(answer.isNotBlank()) { "The offline model returned an empty answer." }
+                        answer
+                    }
                 } finally {
                     synchronized(this) { busy = false }
                 }
@@ -87,11 +93,27 @@ class BobbyOfflineAi(context: Context) {
         }
     }
 
+    private fun boundPrompt(prompt: String): String {
+        if (prompt.length <= MAX_PROMPT_CHARS) return prompt
+        val prefix = prompt.take(PREFIX_CHARS)
+        val recent = prompt.takeLast(RECENT_CHARS)
+        return prefix + "\n\n[Earlier context shortened to fit the offline model window.]\n\n" + recent
+    }
+
+    /** Prevent concurrent model shutdown while a conversation is generating. */
     @Synchronized
     fun close() {
         runCatching { conversation?.close() }
         conversation = null
         runCatching { engine?.close() }
         engine = null
+    }
+
+    companion object {
+        // Leave headroom for Android, the UI, model weights, and the KV cache.
+        private const val MIN_FREE_RAM_BYTES = 1_800L * 1024L * 1024L
+        private const val MAX_PROMPT_CHARS = 9_000
+        private const val PREFIX_CHARS = 2_000
+        private const val RECENT_CHARS = 6_500
     }
 }
