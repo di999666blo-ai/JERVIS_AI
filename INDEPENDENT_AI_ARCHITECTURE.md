@@ -107,6 +107,25 @@ The independent AI is not complete until:
 - UI clearly distinguishes installed, downloaded, loading, ready, unavailable, and failed states.
 - No online fallback occurs without user choice.
 
-## Current status
+## Implementation status (2026-11-13)
 
-Architecture and phased implementation plan only. The existing Qwen3 0.6B offline path is a starting point, not yet independently verified as a complete offline assistant. No new model has been trained, no new model weights are included in this repository, and no physical-device test is claimed.
+### Completed in `bobby-independent-ai`
+- Confirmed the app already routes explicit OFFLINE mode to local LiteRT-LM inference; AUTO uses the online provider first and may fall back locally after a failed online request; ONLINE stays online.
+- Confirmed approved local memories and profile/persona context are included in the prompt assembled for explicit OFFLINE chat.
+- Hardened model download/import: both paths now require the pinned SHA-256, enforce the supported 600–630 MB range, write to a temporary file, and preserve the previous installation until the replacement passes verification.
+- Model status now means checksum-verified installation, not merely a non-empty file.
+- Improved inference safety: model load requires 1.8 GB of currently available RAM, verifies the installed model before loading, bounds oversized prompts while preserving the latest user context, and prevents model shutdown from racing a generation call.
+- Enabled the Android build workflow on this independent branch. The existing release-publishing condition remains restricted to `bobby-development`.
+
+### Verified model provenance
+- Artifact: `litert-community/Qwen3-0.6B/Qwen3-0.6B.litertlm`.
+- Licence shown by the publisher: Apache-2.0.
+- Publisher's file metadata: 613,722,264 bytes and SHA-256 `c5f39b4191926786c3e6668b62af4d6eb15248dfc7a5348252a9b406f33f2108`.
+- Runtime dependency in this app: LiteRT-LM Android 0.18.0; publisher states this artifact requires 0.18.0 or newer.
+- The model's documented device memory footprint can approach 2.7 GB in published CPU examples. The 1.8 GB free-RAM gate is a conservative preflight, not a guarantee that every 4 GB phone can run it.
+
+### Still not claimed
+- The new code has not yet been confirmed by a successful Android CI build.
+- No physical-device inference test has been performed.
+- No foundation model has been trained from scratch; this project is an independent Android assistant/runtime built around an open-weight model.
+
