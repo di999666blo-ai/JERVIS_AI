@@ -555,7 +555,7 @@ private fun BobbyHome(
                 val reply = result.getOrElse { "Hello $guestName! Nice to meet you. I'm Bobby, an AI assistant. How are you doing?" }
                 chat.add(ChatLine(true, reply))
                 state = if (result.isSuccess) "SPEAKING" else "IDLE"
-                onSpeak(reply)
+                if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
                 state = "IDLE"
             }
             return
@@ -574,7 +574,7 @@ private fun BobbyHome(
             val guest = socialCompanion.activeGuest().ifBlank { "there" }
             socialCompanion.offerActivity("chess")
             val reply = "$guest, would you like to play chess with me? Say yes to open a chess app, or no and I'll suggest another activity."
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         val pendingActivity = socialCompanion.pendingActivity()
         if (pendingActivity == "chess" && Regex("""(?i)^\s*(?:yes|yeah|yep|sure|okay|ok|let's play|lets play|play)\s*[.!]?\s*$""").matches(clean)) {
@@ -582,16 +582,16 @@ private fun BobbyHome(
             runCatching { BobbyAndroidActions.openApp(appContext, "chess") }
                 .onSuccess { appName ->
                     val reply = "Great! Opening $appName. Let me know when the board is ready. I'll help with the game if its controls are accessible."
-                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
                 }.onFailure {
                     val reply = "I couldn't find a chess app installed. We can choose a quiz or riddles instead, or add a chess game inside BOBBY."
-                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
                 }
         }
         if (pendingActivity == "chess" && Regex("""(?i)^\s*(?:no|nope|not now|maybe later)\s*[.!]?\s*$""").matches(clean)) {
             socialCompanion.clearPendingActivity()
             val reply = "No problem! Would you prefer a quiz, a riddle, some music, or just a friendly chat?"
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         if (listOf("update yourself", "update bobby", "check for updates", "update the apk", "install bobby update").any { lower.contains(it) }) {
             chat.add(ChatLine(false, clean))
@@ -618,7 +618,7 @@ private fun BobbyHome(
                 if (permissionMissing) "Reminder saved, but allow BOBBY notifications in Android Settings so the alert can appear."
                 else "Reminder scheduled. I'll notify you in $amount $unit: $task"
             }.onSuccess { reply ->
-                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
             }.onFailure { error ->
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't schedule that reminder: " + (error.message ?: "unknown error"))); onSpeak("I couldn't schedule that reminder."); return
             }
@@ -637,7 +637,7 @@ private fun BobbyHome(
                 BobbyAndroidActions.setAlarm(appContext, hour, minute)
                 "Clock opened with the requested alarm time. Review it and tap Save in your Clock app."
             }.onSuccess { reply ->
-                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
             }.onFailure { error ->
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't set that alarm: " + (error.message ?: "unknown error"))); onSpeak("I couldn't set that alarm."); return
             }
@@ -650,11 +650,11 @@ private fun BobbyHome(
                 runCatching { BobbyAndroidActions.dialContact(appContext, requested) }
                     .onSuccess { name ->
                         val reply = "I found $name and opened your phone dialer. Please check the contact and tap the call button when you're ready. 📞"
-                        chat.add(ChatLine(true, reply)); onSpeak(reply)
+                        chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
                     }
                     .onFailure { error ->
                         val reply = error.message ?: "I couldn't find that contact."
-                        chat.add(ChatLine(true, reply)); onSpeak(reply)
+                        chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
                     }
             } else {
                 pendingContactCall = requested
@@ -669,7 +669,7 @@ private fun BobbyHome(
                 screenText.isBlank() -> "I couldn't read accessible text on this screen. Some apps draw their content in a way Android accessibility cannot expose."
                 else -> "Here's the visible text I can access: " + screenText.take(1400)
             }
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         val accessibilityCommand = Regex("""(?i)^\s*(?:bobby[, ]+)?(click|tap)\s+(.{1,60})$""").find(clean)
         if (accessibilityCommand != null) {
@@ -681,7 +681,7 @@ private fun BobbyHome(
                 BobbyAccessibilityController.clickText(target) -> "I tapped the visible control labelled $target."
                 else -> "I couldn't find a tappable visible control matching $target on this screen."
             }
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         val typeCommand = Regex("""(?i)^\s*(?:bobby[, ]+)?type\s+(.{1,300})\s+into\s+(.{1,80})$""").find(clean)
         if (typeCommand != null) {
@@ -692,32 +692,32 @@ private fun BobbyHome(
                 BobbyAccessibilityController.enterText(field, value) -> "I entered the text into the visible $field field. Please review it before submitting."
                 else -> "I couldn't identify an editable field matching $field on this screen."
             }
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         if (Regex("""(?i)^\s*(?:bobby[, ]+)?scroll\s+down\s*$""").matches(clean)) {
             val reply = if (BobbyAccessibilityController.scrollDown()) "Scrolled down." else "I couldn't find a scrollable area on this screen."
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         if (Regex("""(?i)^\s*(?:bobby[, ]+)?scroll\s+up\s*$""").matches(clean)) {
             val reply = if (BobbyAccessibilityController.scrollUp()) "Scrolled up." else "I couldn't find a scrollable area on this screen."
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         if (Regex("""(?i)^\s*(?:bobby[, ]+)?go\s+back\s*$""").matches(clean)) {
             val reply = if (BobbyAccessibilityController.goBack()) "Going back." else "Android didn't allow the Back action."
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         if (Regex("""(?i)^\s*(?:bobby[, ]+)?go\s+home\s*$""").matches(clean)) {
             val reply = if (BobbyAccessibilityController.goHome()) "Going to the Home screen." else "Android didn't allow the Home action."
-            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+            chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         if (Regex("""(?i)\b(?:play|start)\s+chess\b""").containsMatchIn(clean)) {
             runCatching { BobbyAndroidActions.openApp(appContext, "chess") }
                 .onSuccess { appName ->
                     val reply = "Opening $appName. Tell me when the board is ready and I'll help with the game where its controls are accessible."
-                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
                 }.onFailure {
                     val reply = "I couldn't find an installed chess app. I can still suggest another activity."
-                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); onSpeak(reply); return
+                    chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
                 }
         }
         val openApp = Regex("""(?i)\b(?:open|launch|start)\s+(.{2,40})$""").find(clean)
@@ -733,7 +733,7 @@ private fun BobbyHome(
             derivOpen = true
             chat.add(ChatLine(false, clean))
             val reply = "I’ll open the secure Deriv setup. I need your numeric App ID and an API token with the minimum permissions. Paste them only into the secure fields here, never into this chat."
-            chat.add(ChatLine(true, reply)); onSpeak(reply)
+            chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
             return
         }
         chat.add(ChatLine(false, clean))
@@ -745,14 +745,14 @@ private fun BobbyHome(
                     val reply = result.getOrElse { "Offline AI could not start: ${it.message ?: "unknown error"}. You can still connect an online AI provider in AI SETTINGS." }
                     chat.add(ChatLine(true, reply))
                     state = if (result.isSuccess) "SPEAKING" else "ERROR"
-                    if (result.isSuccess && speakThisReply) onSpeak(reply)
+                    if (result.isSuccess && speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
                     state = if (result.isSuccess) "IDLE" else "ERROR"
                 }
             } else {
                 val reply = answerFor(clean)
                 chat.add(ChatLine(true, reply))
                 state = "SPEAKING"
-                onSpeak(reply)
+                if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
                 state = "IDLE"
             }
         } else {
@@ -761,7 +761,7 @@ private fun BobbyHome(
                 val reply = result.getOrElse { "I couldn't reach the AI service: ${it.message ?: "unknown error"}. Check your connection and API settings." }
                 chat.add(ChatLine(true, reply))
                 state = if (result.isSuccess) "SPEAKING" else "ERROR"
-                if (result.isSuccess && speakThisReply) onSpeak(reply)
+                if (result.isSuccess && speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
                 state = if (result.isSuccess) "IDLE" else "ERROR"
             }
         }
@@ -794,7 +794,7 @@ private fun BobbyHome(
                             onAskAiWithImage(chat.toList(), path) { response ->
                                 val reply = response.getOrElse { "I captured the screen, but the selected AI model could not analyse images: " + (it.message ?: "unknown error") }
                                 chat.add(ChatLine(true, reply)); state = if (response.isSuccess) "IDLE" else "ERROR"
-                                if (response.isSuccess) onSpeak(reply)
+                                // Do not read imported content aloud automatically in chat.
                             }
                         } else chat.add(ChatLine(true, "Screen captured locally. Connect a vision-capable AI model in AI SETTINGS to let me describe it."))
                     }
@@ -826,7 +826,7 @@ private fun BobbyHome(
                                         val reply = response.getOrElse { "Image imported locally, but vision analysis failed: " + (it.message ?: "unknown error") }
                                         chat.add(ChatLine(true, reply))
                                         state = if (response.isSuccess) "IDLE" else "ERROR"
-                                        if (response.isSuccess) onSpeak(reply)
+                                        // Do not read imported content aloud automatically in chat.
                                     }
                                 } else {
                                     chat.add(ChatLine(true, "Image converted and stored locally. Connect a vision-capable AI provider in AI SETTINGS to analyse it."))
@@ -843,7 +843,7 @@ private fun BobbyHome(
                                         val reply = response.getOrElse { "I imported the file locally, but AI analysis failed: ${it.message ?: "unknown error"}." }
                                         chat.add(ChatLine(true, reply))
                                         state = if (response.isSuccess) "IDLE" else "ERROR"
-                                        if (response.isSuccess) onSpeak(reply)
+                                        // Do not read imported content aloud automatically in chat.
                                     }
                                 } else {
                                     chat.add(ChatLine(true, "I extracted the text and added it to this chat. Connect your AI provider in AI SETTINGS, then ask me to analyse it."))
