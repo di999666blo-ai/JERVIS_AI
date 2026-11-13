@@ -21,8 +21,11 @@ Read `AGENTS.md`, `BOBBY_MASTER_VISION.md`, and `BOBBY_IMPLEMENTATION_STATUS.md`
 - Real 3D asset work: `.github/agents/3d-asset-engineer.agent.md`
 - Security review: `.github/agents/security-reviewer.agent.md`
 - QA and verification: `.github/agents/qa-verifier.agent.md`
+- Planning: `.github/agents/bobby-planner.agent.md`
+- Architecture and regression review: `.github/agents/bobby-architecture-reviewer.agent.md`
+- Gradle/CI build repair: `.github/agents/bobby-build-repair.agent.md`
 
-For visual requests, select Creative Studio; for editable GLB/glTF, rigging or Android 3D rendering, select 3D Asset Engineer. Use both for combined character design-to-3D tasks. These are agent instruction profiles; their availability in GitHub Copilot's agent picker depends on the user's Copilot plan and repository feature enablement. Codex can also be explicitly instructed to follow the relevant profile.
+For visual requests, select Creative Studio; for editable GLB/glTF, rigging or Android 3D rendering, select 3D Asset Engineer. Use both for combined character design-to-3D tasks. For multi-part tasks, start with BOBBY Planner, then use the specialist implementer, Architecture Reviewer, Security Reviewer where relevant, and QA Verifier. Use Android Verification for Gradle/build/device acceptance and Build Repair only for reproducible build failures. These are agent instruction profiles; availability in a development tool's agent picker depends on that tool's plan and repository feature enablement. Codex can also be explicitly instructed to follow a profile. See `ECC_INTEGRATION.md`.
  
 ## Engineering loop
 1. Inspect repository state and relevant code.
