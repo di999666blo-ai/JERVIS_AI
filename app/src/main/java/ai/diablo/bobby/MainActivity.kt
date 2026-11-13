@@ -5,6 +5,8 @@ import android.content.ComponentCallbacks2
 import android.os.Bundle
 import android.provider.Settings
 import android.net.Uri
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
@@ -43,6 +45,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -404,6 +407,7 @@ private fun BobbyHome(
     var chartAgentsOpen by remember { mutableStateOf(false) }
     var showStartup by remember { mutableStateOf(true) }
     var sidebarOpen by remember { mutableStateOf(false) }
+    var dashboardWebView by remember { mutableStateOf<WebView?>(null) }
     val uiPrefs = remember { appContext.getSharedPreferences("bobby_ui_preferences", android.content.Context.MODE_PRIVATE) }
     var themeMode by remember { mutableStateOf(uiPrefs.getString("theme_mode", if (uiPrefs.getBoolean("light_theme", false)) "LIGHT" else "DARK") ?: "DARK") }
     val systemDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
@@ -892,6 +896,29 @@ private fun BobbyHome(
         runCatching { recognizer.launch(intent) }.onFailure { state = "VOICE UNAVAILABLE" }
     }
 
+    LaunchedEffect(chat.size, chat.lastOrNull()?.text, activeMode, activePersona.id, state, lightTheme) {
+        val payload = org.json.JSONArray().apply {
+            chat.forEach { line ->
+                put(org.json.JSONObject().apply {
+                    put("fromBobby", line.fromBobby)
+                    put("text", line.text)
+                })
+            }
+        }
+        val modeName = when (activeMode) {
+            BobbyMode.FRIENDLY -> "Friendly"
+            BobbyMode.WORKING -> "Work"
+            BobbyMode.DARK -> "Dark"
+        }
+        val script = "window.bobbySync && window.bobbySync(" +
+            org.json.JSONObject.quote(payload.toString()) + "," +
+            org.json.JSONObject.quote(modeName) + "," +
+            org.json.JSONObject.quote(activePersona.label) + "," +
+            org.json.JSONObject.quote(state) + "," +
+            lightTheme.toString() + ");"
+        dashboardWebView?.evaluateJavascript(script, null)
+    }
+
     LaunchedEffect(voiceLaunchToken) {
         if (voiceLaunchToken > 0) {
             speakNextReply = true
@@ -1135,6 +1162,60 @@ private fun BobbyHome(
                             }
                         }
                     }
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = { context ->
+                            WebView(context).apply {
+                                setBackgroundColor(android.graphics.Color.rgb(7, 6, 9))
+                                settings.javaScriptEnabled = true
+                                settings.domStorageEnabled = true
+                                settings.allowFileAccess = true
+                                settings.allowContentAccess = false
+                                settings.allowFileAccessFromFileURLs = false
+                                settings.allowUniversalAccessFromFileURLs = false
+                                webViewClient = object : WebViewClient() {
+                                    override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                                        return !url.startsWith("file:///android_asset/")
+                                    }
+                                }
+                                addJavascriptInterface(
+                                    BobbyHtmlDashboardBridge(
+                                        onSend = { message -> send(message) },
+                                        onNavigate = { section ->
+                                            when (section.lowercase(Locale.ROOT)) {
+                                                "home", "chat" -> Unit
+                                                "tools", "plugins" -> pluginsOpen = true
+                                                "memory" -> { memoryItems = memoryStore.list(); memoryOpen = true }
+                                                "files" -> filePicker.launch(arrayOf("*/*"))
+                                                "more", "settings" -> settingsOpen = true
+                                                "research" -> webResearchOpen = true
+                                                "video" -> videoStudioOpen = true
+                                                "image" -> creativeStudioOpen = true
+                                                "voice" -> launchVoiceInput()
+                                                "deriv" -> derivOpen = true
+                                            }
+                                        },
+                                        onSelectMode = { selected ->
+                                            when (selected.lowercase(Locale.ROOT)) {
+                                                "friendly" -> { modeStore.saveHistory(activeMode, chat.toList()); modeStore.setMode(BobbyMode.FRIENDLY); activeMode = BobbyMode.FRIENDLY }
+                                                "work" -> { modeStore.saveHistory(activeMode, chat.toList()); modeStore.setMode(BobbyMode.WORKING); activeMode = BobbyMode.WORKING }
+                                                "dark" -> { modeStore.saveHistory(activeMode, chat.toList()); modeStore.setMode(BobbyMode.DARK); activeMode = BobbyMode.DARK }
+                                                "caveman" -> BobbyPersonaStore.options.firstOrNull { it.label.equals("Caveman", true) }?.let { personaStore.save(it); activePersona = it }
+                                            }
+                                        },
+                                        onTheme = { light ->
+                                            themeMode = if (light) "LIGHT" else "DARK"
+                                            uiPrefs.edit().putString("theme_mode", themeMode).putBoolean("light_theme", light).apply()
+                                        },
+                                        onVoice = { launchVoiceInput() }
+                                    )
+                                )
+                                dashboardWebView = this
+                                loadUrl("file:///android_asset/bobby-dashboard-preview.html")
+                            }
+                        },
+                        update = { dashboardWebView = it }
+                    )
                     if (sidebarOpen) {
                         Row(Modifier.fillMaxSize().background(Color(0x99000000))) {
                             Column(Modifier.width(286.dp).fillMaxHeight().background(panelBg).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
