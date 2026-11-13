@@ -606,7 +606,7 @@ private fun BobbyHome(
             state = "IDLE"
         }
     }
-    fun send(text: String) {
+    fun send(text: String, allowCommandActions: Boolean = false) {
         val clean = text.trim()
         if (clean.isEmpty()) return
         val lower = clean.lowercase(Locale.ROOT)
@@ -789,7 +789,7 @@ private fun BobbyHome(
                     // Reuse the existing local action handlers (alarms, screen reading,
                     // accessibility taps/typing/scrolling, Back/Home) before falling back to chat.
                     // The prefix is removed once, so this cannot recurse indefinitely.
-                    send(explicitCommand)
+                    send(explicitCommand, allowCommandActions = true)
                     return
                 }
             }
@@ -802,21 +802,21 @@ private fun BobbyHome(
             return
         }
 
-        if (Regex("""(?i)^\\s*(?:stop speaking|stop voice|be quiet|silence)\\s*[.!]?\\s*$""").matches(clean)) {
+        if (allowCommandActions && Regex("""(?i)^\\s*(?:stop speaking|stop voice|be quiet|silence)\\s*[.!]?\\s*$""").matches(clean)) {
             onStopSpeech()
             chat.add(ChatLine(false, clean))
             chat.add(ChatLine(true, "Okay. I’ve stopped speaking."))
             state = "IDLE"
             return
         }
-        if (Regex("""(?i)^\s*(?:read that|read my last message|read your last answer|read the last reply)\s*[.!]?\s*$""").matches(clean)) {
+        if (allowCommandActions && Regex("""(?i)^\s*(?:read that|read my last message|read your last answer|read the last reply)\s*[.!]?\s*$""").matches(clean)) {
             val previousReply = chat.lastOrNull { it.fromBobby }?.text
             chat.add(ChatLine(false, clean))
             if (previousReply.isNullOrBlank()) chat.add(ChatLine(true, "There isn't a reply to read yet."))
             else onSpeak(previousReply)
             return
         }
-        if (Regex("""(?i)^\s*(?:repeat that|say that again|repeat your last answer)\s*[.!]?\s*$""").matches(clean)) {
+        if (allowCommandActions && Regex("""(?i)^\s*(?:repeat that|say that again|repeat your last answer)\s*[.!]?\s*$""").matches(clean)) {
             val previousReply = chat.lastOrNull { it.fromBobby }?.text
             if (previousReply.isNullOrBlank()) {
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "There isn't a previous reply to repeat yet."))
@@ -826,7 +826,7 @@ private fun BobbyHome(
             return
         }
         val introduction = Regex("""(?i)\b(?:meet|introduce)\s+(?:my\s+)?(?:friend|guest|buddy)?\s*([\p{L}][\p{L} .'-]{1,45})$""").find(clean)
-        if (introduction != null && listOf("meet", "introduce").any { lower.startsWith(it) }) {
+        if (allowCommandActions && introduction != null && listOf("meet", "introduce").any { lower.startsWith(it) }) {
             val guestName = runCatching { socialCompanion.introduceGuest(introduction.groupValues[1]) }.getOrElse {
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, it.message ?: "I couldn't identify the guest's name.")); return
             }
@@ -842,13 +842,13 @@ private fun BobbyHome(
             }
             return
         }
-        if (listOf("end guest session", "goodbye guest", "forget guest").any { lower.contains(it) }) {
+        if (allowCommandActions && listOf("end guest session", "goodbye guest", "forget guest").any { lower.contains(it) }) {
             socialCompanion.endGuestSession()
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "Guest session ended. I won't assume anyone else is still here."))
             onSpeak("Guest session ended.")
             return
         }
-        if (Regex("""(?i)\b(entertain|entertainment|amuse)\b""").containsMatchIn(clean)) {
+        if (allowCommandActions && Regex("""(?i)\b(entertain|entertainment|amuse)\b""").containsMatchIn(clean)) {
             val namedGuest = Regex("""(?i)\b(?:entertain|entertainment|amuse)\s+([\p{L}][\p{L} .'-]{1,40})$""").find(clean)?.groupValues?.get(1)?.trim()
             if (!namedGuest.isNullOrBlank() && socialCompanion.activeGuest().isBlank()) {
                 runCatching { socialCompanion.introduceGuest(namedGuest) }
@@ -875,7 +875,7 @@ private fun BobbyHome(
             val reply = "No problem! Would you prefer a quiz, a riddle, some music, or just a friendly chat?"
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
-        if (listOf("update yourself", "update bobby", "check for updates", "update the apk", "install bobby update").any { lower.contains(it) }) {
+        if (allowCommandActions && listOf("update yourself", "update bobby", "check for updates", "update the apk", "install bobby update").any { lower.contains(it) }) {
             chat.add(ChatLine(false, clean))
             chat.add(ChatLine(true, "Opening BOBBY's secure update manager. I'll check the published APK and ask Android to confirm installation."))
             updateOpen = true
@@ -884,7 +884,7 @@ private fun BobbyHome(
             return
         }
         val reminder = Regex("""(?i)\bremind me in\s+(\d+)\s*(minutes?|mins?|hours?|hrs?|days?)\s*(?:to|about)?\s+(.+)$""").find(clean)
-        if (reminder != null) {
+        if (allowCommandActions && reminder != null) {
             runCatching {
                 val amount = reminder.groupValues[1].toLong()
                 val unit = reminder.groupValues[2].lowercase(Locale.ROOT)
@@ -906,7 +906,7 @@ private fun BobbyHome(
             }
         }
         val alarm = Regex("""(?i)\b(?:set|create|make)\s+(?:(?:an?)\s+|my\s+)?alarm(?:\s+(?:for|to))?\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b""").find(clean)
-        if (alarm != null) {
+        if (allowCommandActions && alarm != null) {
             runCatching {
                 var hour = alarm.groupValues[1].toInt()
                 val minute = alarm.groupValues[2].ifBlank { "0" }.toInt()
@@ -924,7 +924,7 @@ private fun BobbyHome(
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't set that alarm: " + (error.message ?: "unknown error"))); onSpeak("I couldn't set that alarm."); return
             }
         }
-        if (Regex("""(?i)^\s*(?:bobby[, ]+)?(?:read|describe)\s+(?:my\s+)?screen\s*$""").matches(clean)) {
+        if (allowCommandActions && Regex("""(?i)^\s*(?:bobby[, ]+)?(?:read|describe)\s+(?:my\s+)?screen\s*$""").matches(clean)) {
             val screenText = BobbyAccessibilityController.readVisibleText()
             val reply = when {
                 !BobbyAccessibilityController.isEnabledAndConnected() -> "Screen reading needs BOBBY phone interaction to be enabled in Android Accessibility settings."
@@ -934,7 +934,7 @@ private fun BobbyHome(
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         val accessibilityCommand = Regex("""(?i)^\s*(?:bobby[, ]+)?(click|tap)\s+(.{1,60})$""").find(clean)
-        if (accessibilityCommand != null) {
+        if (allowCommandActions && accessibilityCommand != null) {
             val target = accessibilityCommand.groupValues[2].trim().trim('"', '\'')
             val risky = Regex("""(?i)\b(pay|payment|buy|purchase|transfer|withdraw|send|delete|remove|confirm|trade|place order|subscribe)\b""").containsMatchIn(target)
             val reply = when {
@@ -946,7 +946,7 @@ private fun BobbyHome(
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
         val typeCommand = Regex("""(?i)^\s*(?:bobby[, ]+)?type\s+(.{1,300})\s+into\s+(.{1,80})$""").find(clean)
-        if (typeCommand != null) {
+        if (allowCommandActions && typeCommand != null) {
             val value = typeCommand.groupValues[1].trim().trim('"', '\'')
             val field = typeCommand.groupValues[2].trim()
             val reply = when {
@@ -956,23 +956,23 @@ private fun BobbyHome(
             }
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
-        if (Regex("""(?i)^\s*(?:bobby[, ]+)?scroll\s+down\s*$""").matches(clean)) {
+        if (allowCommandActions && Regex("""(?i)^\s*(?:bobby[, ]+)?scroll\s+down\s*$""").matches(clean)) {
             val reply = if (BobbyAccessibilityController.scrollDown()) "Scrolled down." else "I couldn't find a scrollable area on this screen."
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
-        if (Regex("""(?i)^\s*(?:bobby[, ]+)?scroll\s+up\s*$""").matches(clean)) {
+        if (allowCommandActions && Regex("""(?i)^\s*(?:bobby[, ]+)?scroll\s+up\s*$""").matches(clean)) {
             val reply = if (BobbyAccessibilityController.scrollUp()) "Scrolled up." else "I couldn't find a scrollable area on this screen."
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
-        if (Regex("""(?i)^\s*(?:bobby[, ]+)?go\s+back\s*$""").matches(clean)) {
+        if (allowCommandActions && Regex("""(?i)^\s*(?:bobby[, ]+)?go\s+back\s*$""").matches(clean)) {
             val reply = if (BobbyAccessibilityController.goBack()) "Going back." else "Android didn't allow the Back action."
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
-        if (Regex("""(?i)^\s*(?:bobby[, ]+)?go\s+home\s*$""").matches(clean)) {
+        if (allowCommandActions && Regex("""(?i)^\s*(?:bobby[, ]+)?go\s+home\s*$""").matches(clean)) {
             val reply = if (BobbyAccessibilityController.goHome()) "Going to the Home screen." else "Android didn't allow the Home action."
             chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply)); return
         }
-        if (Regex("""(?i)\b(?:play|start)\s+chess\b""").containsMatchIn(clean)) {
+        if (allowCommandActions && Regex("""(?i)\b(?:play|start)\s+chess\b""").containsMatchIn(clean)) {
             runCatching { BobbyAndroidActions.openApp(appContext, "chess") }
                 .onSuccess { appName ->
                     val reply = "Opening $appName. Tell me when the board is ready and I'll help with the game where its controls are accessible."
@@ -983,7 +983,7 @@ private fun BobbyHome(
                 }
         }
         val openApp = Regex("""(?i)\b(?:open|launch|start)\s+(.{2,40})$""").find(clean)
-        if (openApp != null) {
+        if (allowCommandActions && openApp != null) {
             runCatching { BobbyAndroidActions.openApp(appContext, openApp.groupValues[1].trim()) }
                 .onSuccess { appName ->
                     chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "Opening " + appName + ".")); onSpeak("Opening " + appName + "."); return
@@ -991,7 +991,7 @@ private fun BobbyHome(
                     chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, error.message ?: "I couldn't open that app.")); return
                 }
         }
-        if (listOf("connect to my deriv", "connect deriv", "deriv account", "set up deriv", "setup deriv").any { lower.contains(it) }) {
+        if (allowCommandActions && listOf("connect to my deriv", "connect deriv", "deriv account", "set up deriv", "setup deriv").any { lower.contains(it) }) {
             derivOpen = true
             chat.add(ChatLine(false, clean))
             val reply = "I’ll open the secure Deriv setup. I need your numeric App ID and an API token with the minimum permissions. Paste them only into the secure fields here, never into this chat."
