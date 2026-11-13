@@ -1080,13 +1080,6 @@ private fun BobbyHome(
         onDispose { runCatching { appContext.unregisterReceiver(receiver) } }
     }
 
-    LaunchedEffect(openFilesRequested) {
-        if (openFilesRequested) {
-            openFilesRequested = false
-            filePicker.launch(arrayOf("*/*"))
-        }
-    }
-
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             state = "READING FILE"
@@ -1140,6 +1133,14 @@ private fun BobbyHome(
             }.start()
         }
     }
+
+    LaunchedEffect(openFilesRequested) {
+        if (openFilesRequested) {
+            openFilesRequested = false
+            filePicker.launch(arrayOf("*/*"))
+        }
+    }
+
 
     val recognizer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
