@@ -773,15 +773,22 @@ private fun BobbyHome(
         chat.add(ChatLine(false, clean))
         draft = ""
         if (!aiEnabled) {
-            if (offlineStore.status().installed) {
+            if (aiModeStore.mode() == BobbyAiMode.ONLINE) {
+                val reply = "ONLINE mode is selected, but no cloud AI key is configured. Add a provider in AI SETTINGS or switch to AUTO/OFFLINE."
+                chat.add(ChatLine(true, reply))
+                state = "IDLE"
+            } else if (offlineStore.status().installed) {
                 state = "THINKING"
                 onAskOffline(clean) { result ->
-                    val reply = result.getOrElse { "Offline AI could not start: ${it.message ?: "unknown error"}. You can still connect an online AI provider in AI SETTINGS." }
+                    val reply = result.getOrElse { "Offline AI could not start: ${it.message ?: "unknown error"}. Check the model in OFFLINE AI settings." }
                     chat.add(ChatLine(true, reply))
                     state = if (result.isSuccess) "SPEAKING" else "ERROR"
                     if (result.isSuccess && speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
                     state = if (result.isSuccess) "IDLE" else "ERROR"
                 }
+            } else if (aiModeStore.mode() == BobbyAiMode.OFFLINE) {
+                chat.add(ChatLine(true, "OFFLINE mode is selected, but no local model is installed. Open OFFLINE AI and download it first."))
+                state = "IDLE"
             } else {
                 val reply = answerFor(clean)
                 chat.add(ChatLine(true, reply))
