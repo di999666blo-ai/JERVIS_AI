@@ -1146,6 +1146,8 @@ private fun BobbyHome(
                                     DropdownMenu(expanded = attachmentMenuOpen, onDismissRequest = { attachmentMenuOpen = false }) {
                                         DropdownMenuItem(text = { Text("Files") }, onClick = { attachmentMenuOpen = false; filePicker.launch(arrayOf("*/*")) })
                                         DropdownMenuItem(text = { Text("Pictures") }, onClick = { attachmentMenuOpen = false; filePicker.launch(arrayOf("image/*")) })
+                                        DropdownMenuItem(text = { Text("Video") }, onClick = { attachmentMenuOpen = false; filePicker.launch(arrayOf("video/*")) })
+                                        DropdownMenuItem(text = { Text("Audio / music") }, onClick = { attachmentMenuOpen = false; filePicker.launch(arrayOf("audio/*")) })
                                         DropdownMenuItem(text = { Text("Plugins & integrations") }, onClick = { attachmentMenuOpen = false; pluginsOpen = true })
                                         DropdownMenuItem(text = { Text("Think deeper • Agent desk") }, onClick = { attachmentMenuOpen = false; agentOpen = true })
                                         DropdownMenuItem(text = { Text("Research") }, onClick = { attachmentMenuOpen = false; webResearchOpen = true })
