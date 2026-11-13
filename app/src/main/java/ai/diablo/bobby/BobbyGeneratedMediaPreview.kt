@@ -1,8 +1,10 @@
 package ai.diablo.bobby
 
+import android.graphics.BitmapFactory
 import android.media.MediaPlayer
 import android.widget.MediaController
 import android.widget.VideoView
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +14,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
@@ -27,6 +31,13 @@ fun BobbyGeneratedMediaPreview(path: String, modifier: Modifier = Modifier) {
     if (!file.exists() || !file.isFile) return
 
     when (file.extension.lowercase()) {
+        "jpg", "jpeg", "png", "webp" -> {
+            val bitmap = remember(path) { runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull() }
+            if (bitmap != null) {
+                Image(bitmap = bitmap.asImageBitmap(), contentDescription = "BOBBY generated image",
+                    modifier = modifier.fillMaxWidth().height(220.dp), contentScale = ContentScale.Fit)
+            } else Text("Image preview could not be loaded.")
+        }
         "mp4", "m4v", "3gp" -> {
             var videoView by remember(path) { mutableStateOf<VideoView?>(null) }
             AndroidView(
