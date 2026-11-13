@@ -335,6 +335,7 @@ private fun BobbyHome(
         }
     }
     var draft by remember { mutableStateOf("") }
+    var speakNextReply by remember { mutableStateOf(false) }
     var state by remember { mutableStateOf("IDLE") }
     var settingsOpen by remember { mutableStateOf(false) }
     var agentOpen by remember { mutableStateOf(false) }
@@ -516,11 +517,20 @@ private fun BobbyHome(
         val clean = text.trim()
         if (clean.isEmpty()) return
         val lower = clean.lowercase(Locale.ROOT)
+        val speakThisReply = speakNextReply
+        speakNextReply = false
         if (Regex("""(?i)^\s*(?:stop speaking|stop voice|be quiet|silence)\s*[.!]?\s*$""").matches(clean)) {
             onStopSpeech()
             chat.add(ChatLine(false, clean))
             chat.add(ChatLine(true, "Okay. I’ve stopped speaking."))
             state = "IDLE"
+            return
+        }
+        if (Regex("""(?i)^\s*(?:read that|read my last message|read your last answer|read the last reply)\s*[.!]?\s*$""").matches(clean)) {
+            val previousReply = chat.lastOrNull { it.fromBobby }?.text
+            chat.add(ChatLine(false, clean))
+            if (previousReply.isNullOrBlank()) chat.add(ChatLine(true, "There isn't a reply to read yet."))
+            else onSpeak(previousReply)
             return
         }
         if (Regex("""(?i)^\s*(?:repeat that|say that again|repeat your last answer)\s*[.!]?\s*$""").matches(clean)) {
@@ -734,7 +744,7 @@ private fun BobbyHome(
                     val reply = result.getOrElse { "Offline AI could not start: ${it.message ?: "unknown error"}. You can still connect an online AI provider in AI SETTINGS." }
                     chat.add(ChatLine(true, reply))
                     state = if (result.isSuccess) "SPEAKING" else "ERROR"
-                    if (result.isSuccess) onSpeak(reply)
+                    if (result.isSuccess && speakThisReply) onSpeak(reply)
                     state = if (result.isSuccess) "IDLE" else "ERROR"
                 }
             } else {
@@ -750,7 +760,7 @@ private fun BobbyHome(
                 val reply = result.getOrElse { "I couldn't reach the AI service: ${it.message ?: "unknown error"}. Check your connection and API settings." }
                 chat.add(ChatLine(true, reply))
                 state = if (result.isSuccess) "SPEAKING" else "ERROR"
-                if (result.isSuccess) onSpeak(reply)
+                if (result.isSuccess && speakThisReply) onSpeak(reply)
                 state = if (result.isSuccess) "IDLE" else "ERROR"
             }
         }
@@ -873,6 +883,7 @@ private fun BobbyHome(
 
     LaunchedEffect(voiceLaunchToken) {
         if (voiceLaunchToken > 0) {
+            speakNextReply = true
             onSpeak("I'm awake, sir. Bobby is here, and I'm listening.")
             kotlinx.coroutines.delay(1900)
             launchVoiceInput()
