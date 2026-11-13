@@ -43,6 +43,31 @@ class BobbyFileReader(private val context: Context) {
                 "A representative video frame was extracted locally. Full-motion/audio understanding is not available in this importer.",
                 frame, "Please analyse this representative frame from the attached video named $name. Explain what is visible and note that this is only one frame, not a full video review.")
         }
+        if (mime?.startsWith("audio/") == true || listOf(".mp3", ".m4a", ".aac", ".wav", ".ogg", ".flac", ".opus", ".3gp").any { lower.endsWith(it) }) {
+            val retriever = MediaMetadataRetriever()
+            val details = try {
+                retriever.setDataSource(context, uri)
+                val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)?.takeIf { it.isNotBlank() }
+                val artist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)?.takeIf { it.isNotBlank() }
+                val album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)?.takeIf { it.isNotBlank() }
+                val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+                buildList {
+                    add("Name: $name")
+                    mime?.let { add("Format: $it") }
+                    title?.let { add("Title: $it") }
+                    artist?.let { add("Artist: $it") }
+                    album?.let { add("Album: $it") }
+                    duration?.let { add("Duration: ${it / 60000} min ${(it / 1000) % 60} sec") }
+                }.joinToString("\\n")
+            } finally {
+                runCatching { retriever.release() }
+            }
+            return BobbyFileContent(
+                name, mime,
+                "Audio attachment imported. Available local metadata:\\n$details\\nThe audio waveform has not been transcribed or listened to by AI.",
+                "Audio file recognised and metadata extracted. Audio transcription/understanding is not yet implemented."
+            )
+        }
         if (mime == "application/pdf" || lower.endsWith(".pdf")) {
             val text = context.contentResolver.openInputStream(uri)?.use { input ->
                 PDFBoxResourceLoader.init(context)
