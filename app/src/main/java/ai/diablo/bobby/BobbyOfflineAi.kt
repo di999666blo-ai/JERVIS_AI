@@ -33,7 +33,7 @@ class BobbyOfflineAi(context: Context) {
                 "Not enough free RAM to safely load the offline model. Close other apps and try again. This model can require around 2–3 GB of process memory; the phone may be unable to run it reliably."
             }
             val path = store.modelFile()
-            require(store.status().installed && path.isFile) {
+            require(path.isFile && store.verifyInstalledModel()) {
                 "The offline model is missing or failed its integrity check. Open OFFLINE AI and download the official model again."
             }
             val newEngine = Engine(
