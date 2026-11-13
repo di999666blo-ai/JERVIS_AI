@@ -38,5 +38,7 @@ The selected ECC skills are installed under `.agents/skills/`:
 - `verification-loop`
 - `deep-research`
 - `coding-standards`
+- `android-kotlin-compose` (BOBBY-specific Android/Kotlin/Compose practices)
+- `android-verification` (Gradle, build, CI, and device-acceptance verification)
 
-These are selectively copied/adapted from the MIT-licensed ECC project. Use them as workflow guidance, not as a claim that all ECC agents, hooks, MCP servers, or 314 skills are installed. For Kotlin/Android-specific review, prioritize the project's Android conventions and the actual Android Gradle toolchain.
+These are a selective ECC-inspired workflow set. The two Android skills are local BOBBY-specific adaptations. See `ECC_INTEGRATION.md` for provenance and scope. This is not a full ECC installation: do not claim that every upstream agent, hook, MCP server, or runtime is present. For Kotlin/Android work, prioritize the project's actual Gradle toolchain and Android conventions.
