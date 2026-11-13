@@ -33,8 +33,8 @@ object BobbyAndroidActions {
         return match.loadLabel(context.packageManager).toString()
     }
 
-    /** Finds a contact by display name, then opens the system dialer for user confirmation. */
-    fun dialContact(context: Context, requestedName: String): String {
+    /** Resolves one unambiguous contact entry. Never guesses between similar names. */
+    private fun findContact(context: Context, requestedName: String): Pair<String, String> {
         require(context.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
             "BOBBY needs Contacts permission before I can find that person."
         }
@@ -57,8 +57,27 @@ object BobbyAndroidActions {
         }
         require(matches.isNotEmpty()) { "I couldn't find a phone number for '$query' in your contacts." }
         require(matches.size == 1) { "I found ${matches.size} matching contacts for '$query'. Please use the full contact name so I don't choose the wrong person." }
-        val (name, number) = matches.single()
-        val dial = Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        return matches.single()
+    }
+
+    /** Places a call only after Android has granted CALL_PHONE for this app. */
+    fun callContact(context: Context, requestedName: String): String {
+        require(context.checkSelfPermission(android.Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+            "Android phone permission is required before BOBBY can place a call."
+        }
+        val (name, number) = findContact(context, requestedName)
+        val call = Intent(Intent.ACTION_CALL, Uri.parse("tel:" + Uri.encode(number)))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        require(call.resolveActivity(context.packageManager) != null) { "No phone calling app is available." }
+        context.startActivity(call)
+        return name
+    }
+
+    /** Fallback: opens the system dialer without placing the call. */
+    fun dialContact(context: Context, requestedName: String): String {
+        val (name, number) = findContact(context, requestedName)
+        val dial = Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number)))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         require(dial.resolveActivity(context.packageManager) != null) { "No phone dialer is available." }
         context.startActivity(dial)
         return name

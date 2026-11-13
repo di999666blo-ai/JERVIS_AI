@@ -34,6 +34,7 @@ fun BobbyPermissionCenter(onDismiss: () -> Unit) {
     val runtimePermissions = buildList {
         add(Manifest.permission.RECORD_AUDIO)
         add(Manifest.permission.READ_CONTACTS)
+        add(Manifest.permission.CALL_PHONE)
         if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
     }
     val runtimeLauncher = rememberLauncherForActivityResult(

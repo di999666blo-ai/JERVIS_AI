@@ -510,20 +510,52 @@ private fun BobbyHome(
     var aiMode by remember { mutableStateOf(aiModeStore.mode()) }
     var bubbleOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var pendingContactCall by remember { mutableStateOf("") }
-    val contactsPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    val phoneCallPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val requested = pendingContactCall
         pendingContactCall = ""
+        if (requested.isNotBlank()) {
+            val result = if (granted) {
+                runCatching { BobbyAndroidActions.callContact(appContext, requested) }
+            } else {
+                runCatching { BobbyAndroidActions.dialContact(appContext, requested) }
+            }
+            result.fold(
+                onSuccess = { name ->
+                    val reply = if (granted) {
+                        "Starting a phone call to $name. 📞"
+                    } else {
+                        "I opened the dialer for $name. Android phone permission wasn't granted, so tap the call button yourself. 📞"
+                    }
+                    chat.add(ChatLine(true, reply)); onSpeak(reply)
+                },
+                onFailure = { error ->
+                    val reply = error.message ?: "I couldn't start that call."
+                    chat.add(ChatLine(true, reply)); onSpeak(reply)
+                }
+            )
+        }
+    }
+    val contactsPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val requested = pendingContactCall
         if (granted && requested.isNotBlank()) {
-            runCatching { BobbyAndroidActions.dialContact(appContext, requested) }
-                .onSuccess { name ->
-                    val reply = "I found $name and opened your phone dialer. Please check the contact and tap the call button when you're ready. 📞"
-                    chat.add(ChatLine(true, reply)); onSpeak(reply)
-                }
-                .onFailure { error ->
-                    val reply = error.message ?: "I couldn't open that contact."
-                    chat.add(ChatLine(true, reply)); onSpeak(reply)
-                }
+            if (appContext.checkSelfPermission(android.Manifest.permission.CALL_PHONE) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                pendingContactCall = ""
+                runCatching { BobbyAndroidActions.callContact(appContext, requested) }
+                    .fold(
+                        onSuccess = { name ->
+                            val reply = "Starting a phone call to $name. 📞"
+                            chat.add(ChatLine(true, reply)); onSpeak(reply)
+                        },
+                        onFailure = { error ->
+                            val reply = error.message ?: "I couldn't start that call."
+                            chat.add(ChatLine(true, reply)); onSpeak(reply)
+                        }
+                    )
+            } else {
+                phoneCallPermissionLauncher.launch(android.Manifest.permission.CALL_PHONE)
+            }
         } else if (requested.isNotBlank()) {
+            pendingContactCall = ""
             val reply = "I need Contacts permission to find that person. You can allow it in Android app settings."
             chat.add(ChatLine(true, reply)); onSpeak(reply)
         }
@@ -605,6 +637,27 @@ private fun BobbyHome(
                 command in listOf("hide bubble", "close bubble", "shut bubble", "remove bubble") -> {
                     onHideOverlay()
                     "My floating bubble is hidden."
+                }
+                command.startsWith("call ") -> {
+                    val requested = command.removePrefix("call ").trim().trim('"', '\'')
+                    when {
+                        requested.isBlank() -> "Tell me the contact name you want to call."
+                        appContext.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED -> {
+                            pendingContactCall = requested
+                            contactsPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+                            "I need Contacts permission first so I can find the right person."
+                        }
+                        appContext.checkSelfPermission(android.Manifest.permission.CALL_PHONE) != android.content.pm.PackageManager.PERMISSION_GRANTED -> {
+                            pendingContactCall = requested
+                            phoneCallPermissionLauncher.launch(android.Manifest.permission.CALL_PHONE)
+                            "Android will ask for phone permission before I place the call."
+                        }
+                        else -> runCatching { BobbyAndroidActions.callContact(appContext, requested) }
+                            .fold(
+                                { "Starting a phone call to $it. 📞" },
+                                { "I couldn't start that call: ${it.message ?: "unknown error"}" }
+                            )
+                    }
                 }
                 command in listOf("open camera", "launch camera", "take a picture", "take photo") -> {
                     runCatching {
@@ -786,26 +839,6 @@ private fun BobbyHome(
             }.onFailure { error ->
                 chat.add(ChatLine(false, clean)); chat.add(ChatLine(true, "I couldn't set that alarm: " + (error.message ?: "unknown error"))); onSpeak("I couldn't set that alarm."); return
             }
-        }
-        val callContact = Regex("""(?i)^\s*(?:bobby[, ]+)?(?:please\s+)?call\s+(.{2,60}?)\s*[.!]?\s*$""").find(clean)
-        if (callContact != null) {
-            val requested = callContact.groupValues[1].trim().trim('"', '\'')
-            chat.add(ChatLine(false, clean))
-            if (appContext.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                runCatching { BobbyAndroidActions.dialContact(appContext, requested) }
-                    .onSuccess { name ->
-                        val reply = "I found $name and opened your phone dialer. Please check the contact and tap the call button when you're ready. 📞"
-                        chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
-                    }
-                    .onFailure { error ->
-                        val reply = error.message ?: "I couldn't find that contact."
-                        chat.add(ChatLine(true, reply)); if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(reply))
-                    }
-            } else {
-                pendingContactCall = requested
-                contactsPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
-            }
-            return
         }
         if (Regex("""(?i)^\s*(?:bobby[, ]+)?(?:read|describe)\s+(?:my\s+)?screen\s*$""").matches(clean)) {
             val screenText = BobbyAccessibilityController.readVisibleText()
