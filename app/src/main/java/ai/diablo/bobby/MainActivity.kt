@@ -134,6 +134,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                     }
                     val completeContext = listOf(
                         "BOBBY IDENTITY: You are BOBBY, a girl (female AI assistant). Speak about yourself using she/her pronouns when relevant. Keep your established name BOBBY. Never describe yourself as a man or boy. Be confident and natural; do not repeatedly announce your gender unless it is relevant.",
+                        BobbyPersonaStore(this).instruction(),
                         specialistContext,
                         profileContext,
                         socialCompanion.contextInstruction(),
@@ -264,6 +265,9 @@ private fun BobbyHome(
     val hostActivity = appContext as? ComponentActivity
     val modeStore = remember { BobbyModeStore(appContext) }
     var activeMode by remember { mutableStateOf(modeStore.mode()) }
+    val personaStore = remember { BobbyPersonaStore(appContext) }
+    var activePersona by remember { mutableStateOf(personaStore.load()) }
+    var personaMenuOpen by remember { mutableStateOf(false) }
     val conversationStore = remember { BobbyConversationStore(appContext) }
     var sessions by remember(activeMode) { mutableStateOf(conversationStore.list(activeMode)) }
     var activeSessionId by remember(activeMode) { mutableStateOf(conversationStore.ensureActive(activeMode, modeStore.loadHistory(activeMode))) }
@@ -941,16 +945,55 @@ private fun BobbyHome(
                                 Text(if (aiEnabled) "● AI READY" else if (offlineStore.status().installed) "● OFFLINE" else "● LOCAL", color = Color(0xFF62D6AE), modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), style = MaterialTheme.typography.labelSmall)
                             }
                         }
-                        Row(Modifier.fillMaxWidth().background(chatBg).padding(horizontal = 10.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(Modifier.fillMaxWidth().background(chatBg).padding(horizontal = 8.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
                             listOf(BobbyMode.FRIENDLY to "FRIENDLY", BobbyMode.WORKING to "WORK", BobbyMode.DARK to "DARK").forEach { (mode, label) ->
-                                TextButton(onClick = {
-                                    if (activeMode != mode) {
-                                        modeStore.saveHistory(activeMode, chat.toList())
-                                        modeStore.setMode(mode)
-                                        activeMode = mode
+                                Surface(
+                                    modifier = Modifier.weight(1f).heightIn(min = 34.dp).clickable {
+                                        if (activeMode != mode) {
+                                            modeStore.saveHistory(activeMode, chat.toList())
+                                            modeStore.setMode(mode)
+                                            activeMode = mode
+                                        }
+                                    },
+                                    color = if (activeMode == mode) Neon.copy(alpha = 0.16f) else panelBg,
+                                    shape = RoundedCornerShape(18.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, if (activeMode == mode) Neon else Color(0xFF444444))
+                                ) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp, vertical = 7.dp)) {
+                                        Text(label, color = if (activeMode == mode) Neon else mutedText, fontSize = 10.sp, maxLines = 1)
                                     }
-                                }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(vertical = 4.dp)) {
-                                    Text(label, color = if (activeMode == mode) Neon else Color.LightGray, fontSize = 11.sp)
+                                }
+                            }
+                            Box {
+                                Surface(
+                                    modifier = Modifier.heightIn(min = 34.dp).clickable { personaMenuOpen = true },
+                                    color = Neon.copy(alpha = 0.10f),
+                                    shape = RoundedCornerShape(18.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Neon.copy(alpha = 0.65f))
+                                ) {
+                                    Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text("🎭", fontSize = 12.sp)
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(activePersona.label.uppercase(Locale.ROOT), color = Neon, fontSize = 9.sp, maxLines = 1)
+                                        Text(" ▾", color = Neon, fontSize = 9.sp)
+                                    }
+                                }
+                                DropdownMenu(expanded = personaMenuOpen, onDismissRequest = { personaMenuOpen = false }) {
+                                    BobbyPersonaStore.options.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Column {
+                                                    Text((if (activePersona.id == option.id) "✓ " else "") + option.label)
+                                                    Text(option.description, style = MaterialTheme.typography.bodySmall, color = mutedText)
+                                                }
+                                            },
+                                            onClick = {
+                                                personaStore.save(option)
+                                                activePersona = option
+                                                personaMenuOpen = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }

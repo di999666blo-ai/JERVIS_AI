@@ -7,7 +7,7 @@ import java.util.Locale
 object BobbySpeechLanguage {
     /** Turn formatted chat text into clean speech without reading markdown symbols aloud. */
     fun toSpeakableText(text: String): String = text
-        .replace(Regex("(?s)\`\`\`.*?\`\`\`"), " ")
+        .replace(Regex("(?s)```.*?```"), " ")
         .replace(Regex("!\\[[^]]*]\\([^)]*\\)"), " ")
         .replace(Regex("\\[([^]]+)]\\([^)]*\\)"), "$1")
         .replace(Regex("https?://\\S+"), " link ")
