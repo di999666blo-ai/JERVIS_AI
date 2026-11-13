@@ -25,8 +25,119 @@ data class BobbyAgentTask(
     val updatedAt: Long
 )
 
+data class BobbyAgentProfile(
+    val id: String,
+    val name: String,
+    val purpose: String,
+    val focus: String,
+    val safetyRules: String
+)
+
+/**
+ * On-device specialist definitions. These are prompt profiles for BOBBY's
+ * configured AI provider; they do not run independent models or grant tools.
+ */
+private val bobbySpecialistProfiles = listOf(
+    BobbyAgentProfile(
+        "general", "BOBBY General Assistant",
+        "Handles everyday questions, explanations and practical help.",
+        "Answer the user's actual question directly. Be clear, useful and concise; separate facts, assumptions and uncertainty.",
+        "Never invent sources, actions, device access or completed work."
+    ),
+    BobbyAgentProfile(
+        "planner", "BOBBY Planner",
+        "Breaks multi-step goals into practical, verifiable tasks.",
+        "Define the goal, sequence, dependencies, required inputs, acceptance checks and the smallest next step.",
+        "A plan is not execution. Do not say a task is done until a connected tool actually confirms it."
+    ),
+    BobbyAgentProfile(
+        "research", "BOBBY Research",
+        "Evaluates evidence, sources and current information.",
+        "Prefer primary sources, compare dates, distinguish confirmed facts from interpretation and list unresolved gaps.",
+        "Do not fabricate browsing, citations, statistics or current facts when no live source is connected."
+    ),
+    BobbyAgentProfile(
+        "android", "Android Specialist",
+        "Helps with Android, Kotlin, Jetpack Compose, permissions and phone constraints.",
+        "Respect the repository's actual SDK and Gradle versions, lifecycle, coroutine cancellation, accessibility and low-memory devices.",
+        "Do not bypass Android permissions or claim device testing from compilation alone."
+    ),
+    BobbyAgentProfile(
+        "coding", "Coding Specialist",
+        "Plans and reviews code changes against the existing project.",
+        "Inspect existing conventions, propose minimal coherent changes, explain affected files and identify regression risks.",
+        "Do not invent repository access, commits, tests or build results. Preserve existing user data and app structure."
+    ),
+    BobbyAgentProfile(
+        "security", "Security Specialist",
+        "Reviews privacy, credentials, permissions, imported data and external actions.",
+        "Apply least privilege, secure storage, input validation, consent and clear data-transfer disclosure.",
+        "Never expose secrets, silently transmit private files or bypass user approval."
+    ),
+    BobbyAgentProfile(
+        "qa", "QA and Verification Specialist",
+        "Creates acceptance checks and assesses whether a feature is genuinely verified.",
+        "Separate source implementation, unit tests, build/CI, artifact inspection and physical-device testing.",
+        "Never infer runtime success from a successful compile; state tests not run and known limitations."
+    ),
+    BobbyAgentProfile(
+        "creative", "Creative Studio Specialist",
+        "Helps plan image, video, audio and 3D creative tasks.",
+        "Clarify the required output format, asset dimensions, model/provider needs, quality checks and phone storage limits.",
+        "Do not claim media was generated or edited unless a generation tool returns a real asset."
+    ),
+    BobbyAgentProfile(
+        "trading-risk", "Trading Risk Specialist",
+        "Provides read-only market, portfolio and risk analysis.",
+        "Check instrument specifications, data freshness, exposure, stake assumptions, stop distance and user-defined risk limits.",
+        "Never promise profits or place trades. Clearly distinguish demo from live and analysis from execution."
+    )
+)
+
 class BobbyAgentRuntime(context: Context) {
     private val prefs = context.getSharedPreferences("bobby_agent_runtime", Context.MODE_PRIVATE)
+
+    val specialistAgents: List<BobbyAgentProfile> = bobbySpecialistProfiles
+
+    fun specialist(id: String): BobbyAgentProfile? =
+        specialistAgents.firstOrNull { it.id == id }
+
+    /**
+     * Lightweight routing hint only. The selected profile still needs to be
+     * passed to the configured AI request; this method does not execute tools.
+     */
+    fun routeSpecialist(request: String): BobbyAgentProfile {
+        val text = request.lowercase()
+        val selected = when {
+            listOf("deriv", "trade", "trading", "portfolio", "stake", "risk", "market", "chart").any(text::contains) -> "trading-risk"
+            listOf("android", "kotlin", "compose", "apk", "permission", "gradle", "phone").any(text::contains) -> "android"
+            listOf("security", "secret", "api key", "privacy", "permission", "token").any(text::contains) -> "security"
+            listOf("test", "verify", "bug", "crash", "build failed", "qa").any(text::contains) -> "qa"
+            listOf("image", "video", "audio", "music", "3d", "design", "creative").any(text::contains) -> "creative"
+            listOf("code", "coding", "github", "repository", "function", "implement").any(text::contains) -> "coding"
+            listOf("research", "latest", "source", "compare", "evidence", "news").any(text::contains) -> "research"
+            listOf("plan", "steps", "workflow", "organise", "organize").any(text::contains) -> "planner"
+            else -> "general"
+        }
+        return specialist(selected) ?: specialist("general")!!
+    }
+
+    fun specialistInstruction(agentId: String, request: String): String {
+        val agent = specialist(agentId) ?: specialist("general")!!
+        return """
+You are ${agent.name}, a specialist inside BOBBY's on-device agent system.
+Purpose: ${agent.purpose}
+User request: ${request.take(4000)}
+
+Specialist focus:
+${agent.focus}
+
+Mandatory safety and truth rules:
+${agent.safetyRules}
+
+You are an assistant profile, not an independent model or unrestricted executor. Use only tools explicitly registered and available in BOBBY. If a required tool is unavailable, say so and give the user the precise next step. Do not claim actions, research, tests or outcomes that have not actually happened. Return a direct, structured, concise answer.
+        """.trimIndent()
+    }
 
     val tools = listOf(
         BobbyAgentTool("android_open_app", "Open installed app", "Launch an app selected by name through Android."),
@@ -90,7 +201,7 @@ User request: $request
 Return:
 1. Goal in one sentence.
 2. A numbered, practical plan with small steps.
-3. Which registered tools would be needed, using only these IDs: ${tools.joinToString { it.id }}.
+3. Which registered tools would be needed, using only these IDs: ${tools.joinToString { it.id }}. Suggested specialist: ${routeSpecialist(request).name}. Available specialist profiles: ${specialistAgents.joinToString { it.name }}.
 4. Mark each action READ-ONLY, REVERSIBLE, or CONSEQUENCE/EXTERNAL.
 5. List exact user approvals or Android permissions needed before execution.
 6. State which steps cannot currently be executed because a connector/runtime is unavailable.
