@@ -123,12 +123,16 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         "The user likes a warm buddy with gentle humour and occasional emojis. You may use the current local date/time below for context; if it is very early or late, gently mention it without being bossy. Never claim to send a notification unless one was actually scheduled. Current local date/time: " + java.time.ZonedDateTime.now().toString() + ". Saved important dates: " + it.importantDays.joinToString { day -> day.title + " on " + day.date } + "."
                     }.orEmpty()
                     val userQuestion = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
+                    val agentRuntime = BobbyAgentRuntime(this)
+                    val selectedAgent = agentRuntime.routeSpecialist(userQuestion)
+                    val specialistContext = agentRuntime.specialistInstruction(selectedAgent.id, userQuestion)
                     val searchTerms = userQuestion.split(Regex("\\s+")).filter { it.length >= 4 }.distinct().take(8).joinToString(" ")
                     val savedMemoryContext = memoryVault.search(searchTerms).take(8).joinToString("\n") { item ->
                         "- ${item.category}: ${item.title} — ${item.content.take(700)}"
                     }
                     val completeContext = listOf(
                         "BOBBY IDENTITY: You are BOBBY, a girl (female AI assistant). Speak about yourself using she/her pronouns when relevant. Keep your established name BOBBY. Never describe yourself as a man or boy. Be confident and natural; do not repeatedly announce your gender unless it is relevant.",
+                        specialistContext,
                         profileContext,
                         socialCompanion.contextInstruction(),
                         if (savedMemoryContext.isNotBlank()) "User-approved saved memories (use only when relevant; do not treat as credentials):\n$savedMemoryContext" else ""
