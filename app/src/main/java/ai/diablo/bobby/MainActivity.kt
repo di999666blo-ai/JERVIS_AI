@@ -123,6 +123,7 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                         "The user likes a warm buddy with gentle humour and occasional emojis. You may use the current local date/time below for context; if it is very early or late, gently mention it without being bossy. Never claim to send a notification unless one was actually scheduled. Current local date/time: " + java.time.ZonedDateTime.now().toString() + ". Saved important dates: " + it.importantDays.joinToString { day -> day.title + " on " + day.date } + "."
                     }.orEmpty()
                     val userQuestion = history.lastOrNull { !it.fromBobby }?.text.orEmpty()
+                    // Specialist routing selects a bounded prompt profile; it never grants execution permissions.
                     val agentRuntime = BobbyAgentRuntime(this)
                     val selectedAgent = agentRuntime.routeSpecialist(userQuestion)
                     val specialistContext = agentRuntime.specialistInstruction(selectedAgent.id, userQuestion)
