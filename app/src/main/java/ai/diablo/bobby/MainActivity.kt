@@ -99,6 +99,10 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
                 onStopSpeech = { neuralVoice.stop(); tts?.stop() },
                 onInstallVoice = { runCatching { startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)) } },
                 onToggleOverlay = { toggleFloatingRobot() },
+                onShowOverlay = { showFloatingRobot() },
+                onHideOverlay = { hideFloatingRobot() },
+                onSleep = { sleepBobby() },
+                onWake = { wakeBobby() },
                 voiceLaunchToken = voiceLaunchToken,
                 initialEndpoint = configStore.endpoint(),
                 initialModel = configStore.model(),
@@ -203,23 +207,40 @@ class MainActivity : ComponentActivity(), TextToSpeech.OnInitListener {
 
     private var floatingRobotRunning = false
 
-    private fun toggleFloatingRobot() {
-        if (!Settings.canDrawOverlays(this)) {
-            val permissionIntent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            )
-            startActivity(permissionIntent)
-            return
-        }
+    private fun requestOverlayPermission(): Boolean {
+        if (Settings.canDrawOverlays(this)) return true
+        val permissionIntent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
+        startActivity(permissionIntent)
+        return false
+    }
 
-        if (floatingRobotRunning) {
-            stopService(Intent(this, FloatingRobotService::class.java))
-            floatingRobotRunning = false
-        } else {
-            startService(Intent(this, FloatingRobotService::class.java))
-            floatingRobotRunning = true
-        }
+    private fun toggleFloatingRobot() {
+        if (!requestOverlayPermission()) return
+        if (floatingRobotRunning) hideFloatingRobot() else showFloatingRobot()
+    }
+
+    private fun showFloatingRobot() {
+        if (!requestOverlayPermission()) return
+        startService(Intent(this, FloatingRobotService::class.java))
+        floatingRobotRunning = true
+    }
+
+    private fun hideFloatingRobot() {
+        stopService(Intent(this, FloatingRobotService::class.java))
+        floatingRobotRunning = false
+    }
+
+    private fun wakeBobby() {
+        val wakeIntent = Intent(this, BobbyWakeService::class.java)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) startForegroundService(wakeIntent)
+        else startService(wakeIntent)
+    }
+
+    private fun sleepBobby() {
+        stopService(Intent(this, BobbyWakeService::class.java))
+        hideFloatingRobot()
+        tts?.stop()
+        if (::neuralVoice.isInitialized) neuralVoice.stop()
     }
 
     override fun onInit(status: Int) {
@@ -269,6 +290,10 @@ private fun BobbyHome(
     onStopSpeech: () -> Unit,
     onInstallVoice: () -> Unit,
     onToggleOverlay: () -> Unit,
+    onShowOverlay: () -> Unit,
+    onHideOverlay: () -> Unit,
+    onSleep: () -> Unit,
+    onWake: () -> Unit,
     voiceLaunchToken: Int,
     initialEndpoint: String,
     initialModel: String,
@@ -555,7 +580,92 @@ private fun BobbyHome(
         val lower = clean.lowercase(Locale.ROOT)
         val speakThisReply = speakNextReply
         speakNextReply = false
-        if (Regex("""(?i)^\s*(?:stop speaking|stop voice|be quiet|silence)\s*[.!]?\s*$""").matches(clean)) {
+
+        // Explicit device/app actions use the "Bobby ..." prefix so ordinary chat is never mistaken for a command.
+        val explicitCommand = Regex("""(?i)^\\s*bobby[ ,]+(.+?)\\s*[.!]?\\s*$""").find(clean)?.groupValues?.get(1)?.trim()
+        if (explicitCommand != null) {
+            val command = explicitCommand.lowercase(Locale.ROOT)
+            val commandReply = when {
+                command in listOf("shut up", "be quiet", "stop talking", "stop speaking", "silence") -> {
+                    onStopSpeech()
+                    "Okay. I'll be quiet."
+                }
+                command in listOf("sleep", "go to sleep", "sleep now") -> {
+                    onStopSpeech(); onSleep()
+                    "I'm going to sleep. My wake listener and floating bubble are off. Open BOBBY again when you need me."
+                }
+                command in listOf("wake up", "wake", "get up") -> {
+                    onWake()
+                    "I'm awake. My wake listener is starting."
+                }
+                command in listOf("open bubble", "show bubble", "activate bubble", "open floating bubble") -> {
+                    onShowOverlay()
+                    "Opening my floating bubble. If Android asks, allow display over other apps."
+                }
+                command in listOf("hide bubble", "close bubble", "shut bubble", "remove bubble") -> {
+                    onHideOverlay()
+                    "My floating bubble is hidden."
+                }
+                command in listOf("open camera", "launch camera", "take a picture", "take photo") -> {
+                    runCatching {
+                        val cameraIntent = Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
+                        require(cameraIntent.resolveActivity(appContext.packageManager) != null) { "No camera app is available." }
+                        appContext.startActivity(cameraIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }.fold({ "Opening your camera. You control when to take and save the picture." }, { "I couldn't open the camera: ${it.message ?: "camera unavailable"}" })
+                }
+                command in listOf("open avatar studio", "open avatar", "change my appearance", "customise avatar", "customize avatar") -> {
+                    avatarStudioOpen = true
+                    "Opening my Avatar Studio."
+                }
+                command in listOf("open 3d", "open 3d avatar", "show 3d avatar", "open 3d companion") -> {
+                    robot3dOpen = true
+                    "Opening the 3D companion preview."
+                }
+                command in listOf("open permissions", "open permission centre", "open permission center", "show permissions") -> {
+                    permissionsOpen = true
+                    "Opening my Permission Centre. You choose which Android permissions to grant."
+                }
+                command in listOf("open video studio", "open video maker") -> {
+                    videoStudioOpen = true
+                    "Opening Video Studio."
+                }
+                command in listOf("open image studio", "open image generator", "open creative studio") -> {
+                    creativeStudioOpen = true
+                    "Opening Creative Studio."
+                }
+                command in listOf("open offline ai", "open offline model", "open offline ai model") -> {
+                    offlineOpen = true
+                    "Opening Offline AI."
+                }
+                command in listOf("open plugins", "open plugin manager") -> {
+                    pluginsOpen = true
+                    "Opening Plugins."
+                }
+                command in listOf("open memory", "open memory vault", "show memory") -> {
+                    memoryOpen = true
+                    "Opening Memory Vault."
+                }
+                command in listOf("open settings", "open ai settings", "open connection settings") -> {
+                    settingsOpen = true
+                    "Opening AI Settings."
+                }
+                command.startsWith("open ") || command.startsWith("launch ") || command.startsWith("start ") -> {
+                    val appName = command.substringAfter(' ').trim()
+                    runCatching { BobbyAndroidActions.openApp(appContext, appName) }
+                        .fold({ "Opening $it." }, { "I couldn't open that app: ${it.message ?: "not found"}" })
+                }
+                else -> "I recognised the Bobby command, but that action isn't connected yet: $explicitCommand. I'll keep normal conversation separate from commands."
+            }
+            chat.add(ChatLine(false, clean))
+            chat.add(ChatLine(true, commandReply))
+            if (command !in listOf("shut up", "be quiet", "stop talking", "stop speaking", "silence", "sleep", "go to sleep", "sleep now")) {
+                if (speakThisReply) onSpeak(BobbySpeechLanguage.toSpeakableText(commandReply))
+            }
+            state = "IDLE"
+            return
+        }
+
+        if (Regex("""(?i)^\\s*(?:stop speaking|stop voice|be quiet|silence)\\s*[.!]?\\s*$""").matches(clean)) {
             onStopSpeech()
             chat.add(ChatLine(false, clean))
             chat.add(ChatLine(true, "Okay. I’ve stopped speaking."))
