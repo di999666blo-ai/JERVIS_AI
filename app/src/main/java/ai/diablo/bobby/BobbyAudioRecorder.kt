@@ -14,6 +14,10 @@ class BobbyAudioRecorder(context: Context) {
     private var currentFile: File? = null
     val isRecording: Boolean get() = recorder != null
 
+    /** Live microphone level for the recording UI; zero when idle or unavailable. */
+    @Synchronized
+    fun amplitude(): Int = runCatching { recorder?.maxAmplitude ?: 0 }.getOrDefault(0)
+
     @Suppress("DEPRECATION")
     @Synchronized
     fun start(): File {
