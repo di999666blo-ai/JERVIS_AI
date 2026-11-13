@@ -201,3 +201,11 @@ A successful GitHub Actions APK build proves compilation, not device-level funct
 - Remaining: build the APK, test video/audio/music queue completion and downloads with a user-authorised provider key, test OpenAI image generation and Meshy 3D on device, add reference-image/video editing workflows, add media playback/preview and a visible generated-assets library, and test on the Huawei Android 8 target device.
 - Source commits: video/music adapter update `33d51ddd3ae51ba181c4ee1dba1c941ad4874c0c`; capability overview update `15e0d28387f5521fd80c6c14a2af4201d29526eb`.
 - Status: implementation updated; APK build and provider/device tests pending. Do not mark the creative studio fully green until these checks pass.
+
+
+## 2026-11-13 — In-app specialist agent profiles
+- Added an on-device specialist profile registry for General Assistant, Planner, Research, Android, Coding, Security, QA/Verification, Creative Studio and Trading Risk.
+- Added a lightweight request router and specialist-specific instruction builder to the existing BobbyAgentRuntime. Existing registered tool inventory and task history remain intact.
+- Updated the capability hub to disclose that these are specialist prompts using BOBBY's configured AI provider, not separate models or unrestricted executors.
+- These profiles do not automatically execute external actions. Tool invocation still requires a real registered adapter and approval where consequential.
+- Source changes committed; Android build/CI and physical-device behavior still require verification.
