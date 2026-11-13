@@ -2,7 +2,7 @@ name: BOBBY Android Build
 
 on:
   push:
-    branches: [bobby-development]
+    branches: [bobby-development, bobby-independent-ai]
   workflow_dispatch:
 
 permissions:
