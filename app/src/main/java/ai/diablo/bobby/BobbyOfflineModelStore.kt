@@ -9,27 +9,54 @@ import java.net.URL
 import java.security.MessageDigest
 import kotlin.concurrent.thread
 
-data class OfflineModelStatus(val installed: Boolean, val modelPath: String, val note: String, val bytes: Long = 0L)
+data class OfflineModelStatus(
+    val installed: Boolean,
+    val modelPath: String,
+    val note: String,
+    val bytes: Long = 0L,
+    val verified: Boolean = false
+)
 
 /** Installs only the pinned Qwen3 0.6B LiteRT-LM artifact. */
 class BobbyOfflineModelStore(context: Context) {
     private val app = context.applicationContext
     private val dir = File(app.filesDir, "offline_models").apply { mkdirs() }
+    private val prefs = app.getSharedPreferences("bobby_offline_model", Context.MODE_PRIVATE)
     private val target = File(dir, MODEL_FILE)
     private val temp = File(dir, "model.download.tmp")
     private val backup = File(dir, "model.previous.tmp")
 
     fun modelFile(): File = target
 
+    /**
+     * Fast status check: never hashes a 614 MB file on the UI thread.
+     * Full checksum verification happens on the inference/download worker.
+     */
     fun status(): OfflineModelStatus {
-        val valid = runCatching { isValidModel(target) }.getOrDefault(false)
-        return OfflineModelStatus(
-            valid,
-            if (valid) target.absolutePath else "",
-            if (valid) "Verified Qwen3 0.6B LiteRT-LM model installed. Runtime load and device performance are checked separately."
-            else "No verified offline model installed. Download or import the exact pinned Qwen3 0.6B model.",
-            if (valid) target.length() else 0L
-        )
+        val candidate = target.isFile && target.length() in MIN_MODEL_BYTES..MAX_MODEL_BYTES
+        val verified = candidate &&
+            prefs.getString(KEY_VERIFIED_SHA, null) == EXPECTED_SHA256 &&
+            prefs.getLong(KEY_VERIFIED_SIZE, -1L) == target.length() &&
+            prefs.getLong(KEY_VERIFIED_MTIME, -1L) == target.lastModified()
+        val note = when {
+            !candidate -> "No offline model installed. Download or import the pinned Qwen3 0.6B model."
+            verified -> "Checksum-verified Qwen3 0.6B LiteRT-LM model installed. Runtime readiness is checked when loaded."
+            else -> "Model file detected. Its checksum will be verified in the background before inference."
+        }
+        return OfflineModelStatus(candidate, if (candidate) target.absolutePath else "", note,
+            if (candidate) target.length() else 0L, verified)
+    }
+
+    /** Performs checksum verification off the UI thread before the model is loaded. */
+    fun verifyInstalledModel(): Boolean {
+        if (!target.isFile || target.length() !in MIN_MODEL_BYTES..MAX_MODEL_BYTES) return false
+        val cached = prefs.getString(KEY_VERIFIED_SHA, null) == EXPECTED_SHA256 &&
+            prefs.getLong(KEY_VERIFIED_SIZE, -1L) == target.length() &&
+            prefs.getLong(KEY_VERIFIED_MTIME, -1L) == target.lastModified()
+        if (cached) return true
+        if (!isValidModel(target)) return false
+        markVerified(target)
+        return true
     }
 
     fun downloadRecommended(onProgress: (Long, Long) -> Unit, callback: (Result<OfflineModelStatus>) -> Unit) {
@@ -72,7 +99,7 @@ class BobbyOfflineModelStore(context: Context) {
                     }
                     verifyDigest(digest.digest())
                     installVerifiedTemp()
-                    status().also { check(it.installed) { "Installed model failed final verification." } }
+                    status().also { check(it.installed && it.verified) { "Installed model failed final verification." } }
                 } finally {
                     connection.disconnect()
                 }
@@ -107,7 +134,7 @@ class BobbyOfflineModelStore(context: Context) {
             }
             verifyDigest(digest.digest())
             installVerifiedTemp()
-            return status().also { check(it.installed) { "Imported model failed final verification." } }
+            return status().also { check(it.installed && it.verified) { "Imported model failed final verification." } }
         } catch (error: Throwable) {
             temp.delete()
             throw error
@@ -118,6 +145,7 @@ class BobbyOfflineModelStore(context: Context) {
         target.delete()
         temp.delete()
         backup.delete()
+        prefs.edit().remove(KEY_VERIFIED_SHA).remove(KEY_VERIFIED_SIZE).remove(KEY_VERIFIED_MTIME).apply()
     }
 
     private fun isValidModel(file: File): Boolean {
@@ -139,6 +167,14 @@ class BobbyOfflineModelStore(context: Context) {
         require(actual == EXPECTED_SHA256) { "Model integrity check failed. File rejected; previous installation preserved." }
     }
 
+    private fun markVerified(file: File) {
+        prefs.edit()
+            .putString(KEY_VERIFIED_SHA, EXPECTED_SHA256)
+            .putLong(KEY_VERIFIED_SIZE, file.length())
+            .putLong(KEY_VERIFIED_MTIME, file.lastModified())
+            .apply()
+    }
+
     /** Keep the old installation until the replacement has passed validation. */
     private fun installVerifiedTemp() {
         check(isValidModel(temp)) { "Temporary model failed integrity verification." }
@@ -147,6 +183,7 @@ class BobbyOfflineModelStore(context: Context) {
         try {
             check(temp.renameTo(target)) { "Could not install verified model." }
             check(isValidModel(target)) { "Installed model failed integrity verification." }
+            markVerified(target)
             backup.delete()
         } catch (error: Throwable) {
             target.delete()
@@ -163,5 +200,8 @@ class BobbyOfflineModelStore(context: Context) {
         private const val INSTALL_HEADROOM_BYTES = 100L * 1024L * 1024L
         private const val MIB = 1024L * 1024L
         private const val EXPECTED_SHA256 = "c5f39b4191926786c3e6668b62af4d6eb15248dfc7a5348252a9b406f33f2108"
+        private const val KEY_VERIFIED_SHA = "verified_sha256"
+        private const val KEY_VERIFIED_SIZE = "verified_size"
+        private const val KEY_VERIFIED_MTIME = "verified_mtime"
     }
 }
