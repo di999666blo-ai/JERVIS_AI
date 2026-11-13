@@ -1235,7 +1235,8 @@ private fun BobbyHome(
                                             uiPrefs.edit().putString("theme_mode", themeMode).putBoolean("light_theme", light).apply()
                                         },
                                         onVoice = { launchVoiceInput() }
-                                    )
+                                    ),
+                                    "BOBBY"
                                 )
                                 dashboardWebView = this
                                 loadUrl("file:///android_asset/bobby-dashboard-preview.html")
